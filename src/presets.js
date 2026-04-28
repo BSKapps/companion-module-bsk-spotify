@@ -762,7 +762,31 @@ function getPresets() {
 		type: 'button',
 		category: 'Display',
 		name: 'Cycling Display (Track / Artist / Album)',
-		style: { text: '$(bsk-spotify:display)', size: '12', color: white, bgcolor: black },
+		style: { text: '$(bsk-spotify:display_all)', size: '12', color: white, bgcolor: black },
+		steps: [{ down: [], up: [] }],
+		feedbacks: [],
+	})
+	presets.push({
+		type: 'button',
+		category: 'Display',
+		name: 'Cycling Display (Track / Artist)',
+		style: { text: '$(bsk-spotify:display_track_artist)', size: '12', color: white, bgcolor: black },
+		steps: [{ down: [], up: [] }],
+		feedbacks: [],
+	})
+	presets.push({
+		type: 'button',
+		category: 'Display',
+		name: 'Cycling Display (Track / Playlist Name)',
+		style: { text: '$(bsk-spotify:display_track_playlist)', size: '12', color: white, bgcolor: black },
+		steps: [{ down: [], up: [] }],
+		feedbacks: [],
+	})
+	presets.push({
+		type: 'button',
+		category: 'Display',
+		name: 'Playlist Name',
+		style: { text: '$(bsk-spotify:playlist_name)', size: '12', color: white, bgcolor: black },
 		steps: [{ down: [], up: [] }],
 		feedbacks: [],
 	})

@@ -18,7 +18,10 @@ function getVariables() {
 		{ variableId: 'device_type', name: 'Active Device Type' },
 		{ variableId: 'context_uri', name: 'Current Context URI (playlist/album)' },
 		{ variableId: 'context_type', name: 'Current Context Type' },
-		{ variableId: 'display', name: 'Cycling Display (Track / Artist / Album rotates every poll)' },
+		{ variableId: 'playlist_name', name: 'Current Playlist Name (empty if not playing a playlist)' },
+		{ variableId: 'display_all', name: 'Cycling Display (Track / Artist / Album)' },
+		{ variableId: 'display_track_artist', name: 'Cycling Display (Track / Artist)' },
+		{ variableId: 'display_track_playlist', name: 'Cycling Display (Track / Playlist Name)' },
 		{ variableId: 'position_mss', name: 'Position (M:SS:ms)' },
 		{ variableId: 'duration_mss', name: 'Duration (M:SS:ms)' },
 		{ variableId: 'remaining_mss', name: 'Time Remaining (M:SS:ms)' },
@@ -46,13 +49,30 @@ function msToMSSms(ms) {
 
 function updateVariables() {
 	let remaining = Math.max(0, (this.state.durationMs || 0) - (this.state.positionMs || 0))
-	let cycleItems = [
+	let trackArtistAlbum = [
 		this.state.trackName || '',
 		this.state.artistName || '',
 		this.state.albumName || '',
 	].filter(Boolean)
-	this._displayCycleIndex = cycleItems.length > 0 ? (this._displayCycleIndex + 1) % cycleItems.length : 0
-	let displayValue = cycleItems.length > 0 ? cycleItems[this._displayCycleIndex] : ''
+	let trackArtist = [
+		this.state.trackName || '',
+		this.state.artistName || '',
+	].filter(Boolean)
+	let trackPlaylist = [
+		this.state.trackName || '',
+		this.state.playlistName || '',
+	].filter(Boolean)
+	let cycleSecs = (this.config && this.config.displayCycleSeconds) || 2
+	let now = Date.now()
+	if (!this._displayCycleAt) this._displayCycleAt = now
+	if (now - this._displayCycleAt >= cycleSecs * 1000) {
+		this._displayCycleIndex = (this._displayCycleIndex || 0) + 1
+		this._displayCycleAt = now
+	}
+	let cycleIdx = this._displayCycleIndex || 0
+	let displayValue = trackArtistAlbum.length > 0 ? trackArtistAlbum[cycleIdx % trackArtistAlbum.length] : ''
+	let displayTrackArtist = trackArtist.length > 0 ? trackArtist[cycleIdx % trackArtist.length] : ''
+	let displayTrackPlaylist = trackPlaylist.length > 0 ? trackPlaylist[cycleIdx % trackPlaylist.length] : ''
 	this.setVariableValues({
 		track: this.state.trackName || '',
 		artist: this.state.artistName || '',
@@ -72,7 +92,10 @@ function updateVariables() {
 		device_type: this.state.deviceType || '',
 		context_uri: this.state.contextUri || '',
 		context_type: this.state.contextType || '',
-		display: displayValue,
+		playlist_name: this.state.playlistName || '',
+		display_all: displayValue,
+		display_track_artist: displayTrackArtist,
+		display_track_playlist: displayTrackPlaylist,
 		position_mss: msToMSSms(this.state.positionMs || 0),
 		duration_mss: msToMSSms(this.state.durationMs || 0),
 		remaining_mss: msToMSSms(remaining),

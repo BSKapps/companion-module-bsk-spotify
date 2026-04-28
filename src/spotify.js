@@ -102,6 +102,10 @@ class SpotifyClient {
 		return this._apiGet('/v1/me/player/devices')
 	}
 
+	async getPlaylist(playlistId) {
+		return this._apiGet(`/v1/playlists/${encodeURIComponent(playlistId)}?fields=name`)
+	}
+
 	async transferPlayback(deviceId, play) {
 		return this._apiPut('/v1/me/player', { device_ids: [deviceId], play: !!play })
 	}

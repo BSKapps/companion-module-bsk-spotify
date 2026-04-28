@@ -270,8 +270,21 @@ class SpotifyInstance extends InstanceBase {
 				this.state.deviceName = data.device ? data.device.name : ''
 				this.state.deviceType = data.device ? data.device.type : ''
 				this.state.deviceId = data.device ? data.device.id : ''
-				this.state.contextUri = data.context ? data.context.uri : ''
+				let newContextUri = data.context ? data.context.uri : ''
+				let contextChanged = newContextUri !== this.state.contextUri
+				this.state.contextUri = newContextUri
 				this.state.contextType = data.context ? data.context.type : ''
+				if (contextChanged) {
+					if (this.state.contextType === 'playlist' && newContextUri) {
+						let id = newContextUri.replace('spotify:playlist:', '')
+						this.spotify.getPlaylist(id).then((p) => {
+							this.state.playlistName = (p && p.name) || ''
+							updateVariables.call(this)
+						}).catch(() => { this.state.playlistName = '' })
+					} else {
+						this.state.playlistName = ''
+					}
+				}
 				this.state.isShuffling = data.shuffle_state || false
 				this.state.repeatMode = data.repeat_state || 'off'
 				this.state.isRepeating = this.state.repeatMode !== 'off'
@@ -383,6 +396,17 @@ class SpotifyInstance extends InstanceBase {
 				label: 'Refresh Token (auto-filled after authentication)',
 				width: 12,
 				default: '',
+			},
+			{
+				type: 'number',
+				id: 'displayCycleSeconds',
+				label: 'Cycling Display Speed (seconds) — global',
+				width: 6,
+				default: 2,
+				min: 1,
+				max: 30,
+				step: 1,
+				tooltip: 'Global setting for the $(bsk-spotify:display) variable, which rotates Track / Artist / Album. This is shared across the whole module — every button using $(bsk-spotify:display) will cycle at the same speed. Cannot be set per-button.',
 			},
 			{
 				type: 'static-text',

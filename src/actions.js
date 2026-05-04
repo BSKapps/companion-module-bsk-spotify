@@ -47,24 +47,28 @@ function getActions() {
 			name: 'Play',
 			options: [],
 			callback: async () => {
-				try {
-					await self.spotify.play()
-				} catch (e) {
-					if (/no active device|device.*not.*found/i.test(e.message)) {
-						try {
-							let pick = await self.ensureActiveDevice()
-							if (!pick) { self.log('error', 'No Spotify devices available — could not launch Spotify'); return }
-							self.log('info', `Retrying on device: ${pick.name}`)
-							await self.spotify.play(pick.id)
-						} catch (e2) { self.log('error', `Play failed: ${e2.message}`); return }
-					} else {
-						self.log('error', `Play failed: ${e.message}`)
-						return
-					}
-				}
 				self.state.playerState = 'Playing'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					try {
+						await self.spotify.play()
+					} catch (e) {
+						if (/no active device|device.*not.*found/i.test(e.message)) {
+							let pick = await self.ensureActiveDevice()
+							if (!pick) throw new Error('No Spotify devices available')
+							self.log('info', `Retrying on device: ${pick.name}`)
+							await self.spotify.play(pick.id)
+						} else {
+							throw e
+						}
+					}
+				} catch (e) {
+					self.state.playerState = 'Paused'
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Play failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -72,10 +76,17 @@ function getActions() {
 			name: 'Pause',
 			options: [],
 			callback: async () => {
-				await self.spotify.pause()
 				self.state.playerState = 'Paused'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.pause()
+				} catch (e) {
+					self.state.playerState = 'Playing'
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Pause failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -83,28 +94,32 @@ function getActions() {
 			name: 'Play/Pause Toggle',
 			options: [],
 			callback: async () => {
-				if (self.state.playerState === 'Playing') {
-					await self.spotify.pause()
-					self.state.playerState = 'Paused'
-				} else {
-					try {
-						await self.spotify.play()
-					} catch (e) {
-						if (/no active device|device.*not.*found/i.test(e.message)) {
-							try {
-								let pick = await self.ensureActiveDevice()
-								if (!pick) { self.log('error', 'No Spotify devices available — could not launch Spotify'); return }
-								await self.spotify.play(pick.id)
-							} catch (e2) { self.log('error', `Play failed: ${e2.message}`); return }
-						} else {
-							self.log('error', `Play failed: ${e.message}`)
-							return
-						}
-					}
-					self.state.playerState = 'Playing'
-				}
+				const wasPlaying = self.state.playerState === 'Playing'
+				self.state.playerState = wasPlaying ? 'Paused' : 'Playing'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					if (wasPlaying) {
+						await self.spotify.pause()
+					} else {
+						try {
+							await self.spotify.play()
+						} catch (e) {
+							if (/no active device|device.*not.*found/i.test(e.message)) {
+								let pick = await self.ensureActiveDevice()
+								if (!pick) throw new Error('No Spotify devices available')
+								await self.spotify.play(pick.id)
+							} else {
+								throw e
+							}
+						}
+					}
+				} catch (e) {
+					self.state.playerState = wasPlaying ? 'Playing' : 'Paused'
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Play/pause failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -429,13 +444,20 @@ function getActions() {
 			name: 'Shuffle On',
 			options: [],
 			callback: async () => {
-				await self.spotify.setShuffle(true)
-				// Call twice to break out of Smart Shuffle if active
-				if (self._smartShuffleWarned) await self.spotify.setShuffle(true)
+				const prev = self.state.isShuffling
 				self.state.isShuffling = true
 				self._smartShuffleWarned = false
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setShuffle(true)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(true)
+				} catch (e) {
+					self.state.isShuffling = prev
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Shuffle on failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -443,13 +465,20 @@ function getActions() {
 			name: 'Shuffle Off',
 			options: [],
 			callback: async () => {
-				await self.spotify.setShuffle(false)
-				// Call twice to break out of Smart Shuffle if active
-				if (self._smartShuffleWarned) await self.spotify.setShuffle(false)
+				const prev = self.state.isShuffling
 				self.state.isShuffling = false
 				self._smartShuffleWarned = false
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setShuffle(false)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(false)
+				} catch (e) {
+					self.state.isShuffling = prev
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Shuffle off failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -457,14 +486,21 @@ function getActions() {
 			name: 'Shuffle Toggle',
 			options: [],
 			callback: async () => {
-				let next = !self.state.isShuffling
-				await self.spotify.setShuffle(next)
-				// Call twice to break out of Smart Shuffle if active
-				if (self._smartShuffleWarned) await self.spotify.setShuffle(next)
+				const prev = self.state.isShuffling
+				const next = !prev
 				self.state.isShuffling = next
 				self._smartShuffleWarned = false
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setShuffle(next)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(next)
+				} catch (e) {
+					self.state.isShuffling = prev
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Shuffle toggle failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -472,11 +508,20 @@ function getActions() {
 			name: 'Repeat Off',
 			options: [],
 			callback: async () => {
-				await self.spotify.setRepeat('off')
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
 				self.state.repeatMode = 'off'
 				self.state.isRepeating = false
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat('off')
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat off failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -484,11 +529,20 @@ function getActions() {
 			name: 'Repeat Track',
 			options: [],
 			callback: async () => {
-				await self.spotify.setRepeat('track')
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
 				self.state.repeatMode = 'track'
 				self.state.isRepeating = true
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat('track')
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat track failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -496,11 +550,20 @@ function getActions() {
 			name: 'Repeat Playlist/Album',
 			options: [],
 			callback: async () => {
-				await self.spotify.setRepeat('context')
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
 				self.state.repeatMode = 'context'
 				self.state.isRepeating = true
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat('context')
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat context failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -508,15 +571,23 @@ function getActions() {
 			name: 'Repeat Toggle (Off → Track → Playlist → Off)',
 			options: [],
 			callback: async () => {
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
 				let next = 'off'
 				if (self.state.repeatMode === 'off') next = 'track'
 				else if (self.state.repeatMode === 'track') next = 'context'
-				else next = 'off'
-				await self.spotify.setRepeat(next)
 				self.state.repeatMode = next
 				self.state.isRepeating = next !== 'off'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat(next)
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat toggle failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -524,12 +595,21 @@ function getActions() {
 			name: 'Repeat Toggle (Off ↔ Playlist)',
 			options: [],
 			callback: async () => {
-				let next = self.state.repeatMode === 'off' ? 'context' : 'off'
-				await self.spotify.setRepeat(next)
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
+				const next = self.state.repeatMode === 'off' ? 'context' : 'off'
 				self.state.repeatMode = next
 				self.state.isRepeating = next !== 'off'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat(next)
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat toggle failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -537,12 +617,21 @@ function getActions() {
 			name: 'Repeat Toggle (Off ↔ Track)',
 			options: [],
 			callback: async () => {
-				let next = self.state.repeatMode === 'off' ? 'track' : 'off'
-				await self.spotify.setRepeat(next)
+				const prev = { repeatMode: self.state.repeatMode, isRepeating: self.state.isRepeating }
+				const next = self.state.repeatMode === 'off' ? 'track' : 'off'
 				self.state.repeatMode = next
 				self.state.isRepeating = next !== 'off'
 				self.checkFeedbacks()
 				updateVariables.call(self)
+				try {
+					await self.spotify.setRepeat(next)
+				} catch (e) {
+					self.state.repeatMode = prev.repeatMode
+					self.state.isRepeating = prev.isRepeating
+					self.checkFeedbacks()
+					updateVariables.call(self)
+					self.log('error', `Repeat toggle failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -724,16 +813,18 @@ function getActions() {
 			callback: async () => {
 				let id = (self.state.trackId || '').replace('spotify:track:', '')
 				if (!id) return
+				const prev = self.state.isLiked
+				self.state.isLiked = !prev
+				self.checkFeedbacks('trackLiked')
 				try {
-					if (self.state.isLiked) {
+					if (prev) {
 						await self.spotify.removeTrack(id)
-						self.state.isLiked = false
 					} else {
 						await self.spotify.saveTrack(id)
-						self.state.isLiked = true
 					}
-					self.checkFeedbacks('trackLiked')
 				} catch (e) {
+					self.state.isLiked = prev
+					self.checkFeedbacks('trackLiked')
 					self.log('error', `Like toggle failed: ${e.message}`)
 				}
 			},

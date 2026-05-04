@@ -27,6 +27,7 @@ function getVariables() {
 		{ variableId: 'remaining_mss', name: 'Time Remaining (M:SS:ms)' },
 		{ variableId: 'next_track', name: 'Next Track Name' },
 		{ variableId: 'next_artist', name: 'Next Track Artist' },
+		{ variableId: 'display_next_track_artist', name: 'Cycling Display - Next (Track / Artist)' },
 		{ variableId: 'is_liked', name: 'Current Track Liked (true/false)' },
 		{ variableId: 'api_status', name: 'API Status (OK/Error)' },
 	]
@@ -73,6 +74,11 @@ function updateVariables() {
 	let displayValue = trackArtistAlbum.length > 0 ? trackArtistAlbum[cycleIdx % trackArtistAlbum.length] : ''
 	let displayTrackArtist = trackArtist.length > 0 ? trackArtist[cycleIdx % trackArtist.length] : ''
 	let displayTrackPlaylist = trackPlaylist.length > 0 ? trackPlaylist[cycleIdx % trackPlaylist.length] : ''
+	let nextTrackArtist = [
+		this.state.nextTrackName || '',
+		this.state.nextTrackArtist || '',
+	].filter(Boolean)
+	let displayNextTrackArtist = nextTrackArtist.length > 0 ? nextTrackArtist[cycleIdx % nextTrackArtist.length] : ''
 	this.setVariableValues({
 		track: this.state.trackName || '',
 		artist: this.state.artistName || '',
@@ -101,6 +107,7 @@ function updateVariables() {
 		remaining_mss: msToMSSms(remaining),
 		next_track: this.state.nextTrackName || '',
 		next_artist: this.state.nextTrackArtist || '',
+		display_next_track_artist: displayNextTrackArtist,
 		is_liked: this.state.isLiked ? 'true' : 'false',
 		api_status: this._apiHealthy === false ? 'Error' : 'OK',
 	})

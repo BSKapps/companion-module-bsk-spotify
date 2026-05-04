@@ -8,6 +8,7 @@ function getPresets() {
 	const red = combineRgb(255, 0, 0)
 	const green = combineRgb(0, 180, 0)
 	const darkGreen = combineRgb(0, 100, 0)
+	const limeGreen = combineRgb(0, 255, 0)
 	const blue = combineRgb(0, 100, 200)
 	const orange = combineRgb(220, 120, 0)
 	const grey = combineRgb(60, 60, 60)
@@ -560,16 +561,8 @@ function getPresets() {
 	presets.push({
 		type: 'button',
 		category: 'Combo',
-		name: 'Previous + Artist / Hold: Skip Back 10s',
-		style: { text: '$(bsk-spotify:artist)', size: '9', color: white, bgcolor: black, png64: ICON_PREVIOUS, pngalignment: 'center:top' },
-		steps: [{ up: [{ actionId: 'previous', options: {} }], down: [], 600: [{ actionId: 'movePosition', options: { seconds: -10 } }], options: { runWhileHeld: [600] } }],
-		feedbacks: [],
-	})
-	presets.push({
-		type: 'button',
-		category: 'Combo',
 		name: 'Next + Next Up / Hold: Skip Fwd 10s',
-		style: { text: '$(bsk-spotify:next_track)', size: '9', color: white, bgcolor: black, png64: ICON_NEXT, pngalignment: 'center:top' },
+		style: { text: '$(bsk-spotify:display_next_track_artist)', size: '9', color: white, bgcolor: black, png64: ICON_NEXT, pngalignment: 'center:top' },
 		steps: [{ up: [{ actionId: 'next', options: {} }], down: [], 600: [{ actionId: 'movePosition', options: { seconds: 10 } }], options: { runWhileHeld: [600] } }],
 		feedbacks: [],
 	})
@@ -577,7 +570,7 @@ function getPresets() {
 		type: 'button',
 		category: 'Combo',
 		name: 'Play/Pause + Current Track',
-		style: { text: '$(bsk-spotify:track)', size: '9', color: white, bgcolor: black, png64: ICON_PLAY, pngalignment: 'center:top' },
+		style: { text: '$(bsk-spotify:display_track_artist)', size: '9', color: white, bgcolor: black, png64: ICON_PLAY, pngalignment: 'center:top' },
 		steps: [{ down: [{ actionId: 'playToggle', options: {} }], up: [] }],
 		feedbacks: [{ feedbackId: 'isPlaying', options: {}, style: { png64: ICON_PAUSE, bgcolor: darkGreen } }],
 	})
@@ -600,17 +593,17 @@ function getPresets() {
 	presets.push({
 		type: 'button',
 		category: 'Combo',
-		name: 'Volume Up + Level',
-		style: { text: '$(bsk-spotify:volume)%', size: '11', color: white, bgcolor: black, png64: ICON_VOLUME_UP, pngalignment: 'center:top' },
-		steps: [{ down: [{ actionId: 'volumeUp', options: { amount: 10 } }], up: [] }],
+		name: 'Volume Down + Level',
+		style: { text: '$(bsk-spotify:volume)%', size: '11', color: white, bgcolor: black, png64: ICON_VOLUME_DOWN, pngalignment: 'center:top' },
+		steps: [{ down: [{ actionId: 'volumeDown', options: { amount: 10 } }], up: [] }],
 		feedbacks: [],
 	})
 	presets.push({
 		type: 'button',
 		category: 'Combo',
-		name: 'Volume Down + Level',
-		style: { text: '$(bsk-spotify:volume)%', size: '11', color: white, bgcolor: black, png64: ICON_VOLUME_DOWN, pngalignment: 'center:top' },
-		steps: [{ down: [{ actionId: 'volumeDown', options: { amount: 10 } }], up: [] }],
+		name: 'Volume Up + Level',
+		style: { text: '$(bsk-spotify:volume)%', size: '11', color: white, bgcolor: black, png64: ICON_VOLUME_UP, pngalignment: 'center:top' },
+		steps: [{ down: [{ actionId: 'volumeUp', options: { amount: 10 } }], up: [] }],
 		feedbacks: [],
 	})
 

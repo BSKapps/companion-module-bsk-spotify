@@ -18,9 +18,9 @@ Bitfocus Companion module for Spotify Web API control. Full-featured replacement
 |---|---|
 | `src/main.js` | InstanceBase, poll loop (2s), tick interpolator (500ms), OAuth server |
 | `src/spotify.js` | SpotifyClient — all API calls, 401 auto-refresh, 10s timeout, 429/502/503 retry |
-| `src/actions.js` | All action definitions — immediate local state updates after API calls |
+| `src/actions.js` | All action definitions — API call only, state updated on next poll |
 | `src/feedbacks.js` | 13 feedbacks — playback, shuffle, repeat, track match, health, bookmark, album art |
-| `src/variables.js` | 32 variables — track info, timing, shuffle, repeat, liked, api_status, playlist_name, 3 cycling display variants |
+| `src/variables.js` | 33 variables — track info, timing, shuffle, repeat, liked, api_status, playlist_name, 4 cycling display variants |
 | `src/presets.js` | ~98 presets across 15 categories |
 | `src/albumart.js` | jimp-based album art download + grid slicing (1x1, 2x2, 3x3) |
 | `src/icons.js` | Base64 icon data for transport icon presets |
@@ -28,7 +28,7 @@ Bitfocus Companion module for Spotify Web API control. Full-featured replacement
 | `tests/` | Jest tests for feedbacks, variables, spotify client |
 
 ## Key Design Decisions
-- All actions immediately update `self.state.*` after API call + call `checkFeedbacks()` — no waiting for next poll
+- Actions make API call only — no optimistic state updates. State syncs on next poll (2s). Avoids play/pause flash caused by stale poll responses overwriting optimistic changes.
 - `_apiCall` catches 401, refreshes token, retries once — transparent to all callers
 - `tick()` runs every 500ms to interpolate `positionMs` between polls — smooth time display
 - Poll lock (`_isPolling`) prevents concurrent overlapping polls

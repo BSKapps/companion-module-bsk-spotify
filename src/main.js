@@ -222,6 +222,7 @@ class SpotifyInstance extends InstanceBase {
 		if (estimated >= this.state.durationMs) estimated = this.state.durationMs
 		this.state.positionMs = estimated
 		updateVariables.call(this)
+		this.checkFeedbacks('nearEnd')
 	}
 
 	async poll() {
@@ -269,7 +270,9 @@ class SpotifyInstance extends InstanceBase {
 				}
 				this.state.positionMs = data.progress_ms || 0
 				this.state.durationMs = data.item.duration_ms || 0
-				this.state.volume = data.device ? data.device.volume_percent : this.state.volume
+				if (!this._volumeSetAt || Date.now() - this._volumeSetAt > 2000) {
+					this.state.volume = data.device ? data.device.volume_percent : this.state.volume
+				}
 				this.state.deviceName = data.device ? data.device.name : ''
 				this.state.deviceType = data.device ? data.device.type : ''
 				this.state.deviceId = data.device ? data.device.id : ''

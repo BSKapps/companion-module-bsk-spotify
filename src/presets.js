@@ -814,10 +814,13 @@ function getPresets() {
 	presets.push({
 		type: 'button',
 		category: 'Health',
-		name: 'API Warning Indicator',
+		name: 'Status Indicator (OK / Idle / Err)',
 		style: { text: 'OK', size: '18', color: white, bgcolor: darkGreen },
 		steps: [{ down: [], up: [] }],
-		feedbacks: [{ feedbackId: 'apiHealthy', options: { state: 'unhealthy' }, style: { text: '!\\nAPI', color: white, bgcolor: red } }],
+		feedbacks: [
+			{ feedbackId: 'hasActiveDevice', options: {}, isInverted: true, style: { text: 'IDLE', color: white, bgcolor: combineRgb(0, 0, 153) } },
+			{ feedbackId: 'apiHealthy', options: { state: 'unhealthy' }, style: { text: 'ERR', color: white, bgcolor: red } },
+		],
 	})
 
 	return presets

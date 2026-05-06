@@ -397,6 +397,7 @@ function getActions() {
 			],
 			callback: async (action) => {
 				let v = Math.min(100, (self.state.volume || 0) + action.options.amount)
+				self.state.volume = v
 				await self.spotify.setVolume(v)
 			},
 		},
@@ -418,6 +419,7 @@ function getActions() {
 			],
 			callback: async (action) => {
 				let v = Math.max(0, (self.state.volume || 0) - action.options.amount)
+				self.state.volume = v
 				await self.spotify.setVolume(v)
 			},
 		},

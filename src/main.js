@@ -238,6 +238,9 @@ class SpotifyInstance extends InstanceBase {
 				this.state.albumName = ''
 				this.state.positionMs = 0
 				this.state.durationMs = 0
+				this.state.deviceId = ''
+				this.state.deviceName = ''
+				this.state.deviceType = ''
 			} else {
 				let isEpisode = data.currently_playing_type === 'episode'
 				this.state.playerState = data.is_playing ? 'Playing' : 'Paused'
@@ -363,10 +366,11 @@ class SpotifyInstance extends InstanceBase {
 				id: 'info',
 				label: 'Setup Instructions',
 				value:
-					'<b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a> and open your app settings.<br>' +
-					'<b>Step 2:</b> Add <code>http://127.0.0.1:4115/callback</code> as a Redirect URI and save.<br>' +
-					'<b>Step 3:</b> Copy your Client ID and Client Secret into the fields below.<br>' +
-					'<b>Step 4:</b> Save this config, then open the Authenticate URL shown below in your browser.',
+					'<b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a>, log in, and click Create App. Give it any name.<br>' +
+					'<b>Step 2:</b> Set the Redirect URI to <code>http://127.0.0.1:4115/callback</code> and save.<br>' +
+					'<b>Step 3:</b> Open your new app\'s Settings and copy the Client ID and Client Secret into the fields below.<br>' +
+					'<b>Step 4:</b> Save this config.<br>' +
+					'<b>Step 5:</b> Open the Authenticate URL shown below in your browser.',
 				width: 12,
 			},
 			{

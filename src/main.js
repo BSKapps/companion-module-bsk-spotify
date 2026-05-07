@@ -7,6 +7,7 @@ const { getFeedbacks } = require('./feedbacks')
 const { getPresets } = require('./presets')
 const { getVariables, updateVariables } = require('./variables')
 const SpotifyClient = require('./spotify')
+const AppleScriptSpotify = require('./applescript')
 const { processAlbumArt } = require('./albumart')
 
 const POLL_INTERVAL_MS = 2000
@@ -58,6 +59,9 @@ class SpotifyInstance extends InstanceBase {
 		this._tickTimer = null
 		this._lastPollAt = 0
 		this._lastPolledPositionMs = 0
+		this._useAppleScript = false
+		this._asPollCount = 0
+		this._as = new AppleScriptSpotify()
 	}
 
 	async init(config) {
@@ -211,6 +215,28 @@ class SpotifyInstance extends InstanceBase {
 		}
 	}
 
+	async appleScriptPoll() {
+		try {
+			let s = await this._as.pollState()
+			this.state.playerState = s.playerState
+			this.state.trackName = s.trackName
+			this.state.artistName = s.artistName
+			this.state.albumName = s.albumName
+			this.state.positionMs = s.positionMs
+			this.state.durationMs = s.durationMs
+			this.state.volume = s.volume
+			this.state.isShuffling = s.isShuffling
+			this.state.isRepeating = s.isRepeating
+			this.state.repeatMode = s.isRepeating ? 'context' : 'off'
+			this._lastPollAt = Date.now()
+			this._lastPolledPositionMs = s.positionMs
+			updateVariables.call(this)
+			this.checkFeedbacks()
+		} catch (e) {
+			this.log('warn', `AppleScript poll error: ${e.message}`)
+		}
+	}
+
 	tick() {
 		// Local interpolation between polls — bumps positionMs and updates variables
 		// without hitting the API. Capped at durationMs.
@@ -230,6 +256,14 @@ class SpotifyInstance extends InstanceBase {
 		if (this._isPolling) return
 		this._isPolling = true
 		try {
+			if (this._useAppleScript) {
+				this._asPollCount++
+				if (this._asPollCount % 10 !== 0) {
+					await this.appleScriptPoll()
+					return
+				}
+				// Every 10th poll (~20s): fall through to try API recovery
+			}
 			let data = await this.spotify.getPlaybackState()
 			if (!data || !data.item) {
 				this.state.playerState = 'Stopped'
@@ -343,6 +377,11 @@ class SpotifyInstance extends InstanceBase {
 
 			// Healthy poll
 			this._consecutivePollErrors = 0
+			if (this._useAppleScript) {
+				this._useAppleScript = false
+				this._asPollCount = 0
+				this.log('info', 'Internet connectivity restored - switched back to Spotify Web API')
+			}
 			if (!this._apiHealthy) {
 				this._apiHealthy = true
 				this.updateStatus(InstanceStatus.Ok)
@@ -354,8 +393,20 @@ class SpotifyInstance extends InstanceBase {
 			// Mark unhealthy after 3 consecutive failures (~6s)
 			if (this._consecutivePollErrors >= 3 && this._apiHealthy) {
 				this._apiHealthy = false
-				this.updateStatus(InstanceStatus.ConnectionFailure, `API error: ${e.message}`)
+				if (process.platform === 'darwin') {
+					this._useAppleScript = true
+					this._asPollCount = 0
+					this.log('warn', 'Web API unreachable - switching to AppleScript fallback (macOS only)')
+					this.updateStatus(InstanceStatus.Warning, 'Offline - using AppleScript fallback (macOS only)')
+				} else {
+					this.updateStatus(InstanceStatus.ConnectionFailure, `API error: ${e.message}`)
+				}
 				this.checkFeedbacks('apiHealthy')
+			}
+			if (this._useAppleScript) {
+				try { await this.appleScriptPoll() } catch (asErr) {
+					this.log('warn', `AppleScript fallback poll failed: ${asErr.message}`)
+				}
 			}
 		} finally {
 			this._isPolling = false
@@ -423,7 +474,8 @@ class SpotifyInstance extends InstanceBase {
 					'<b>Nothing working?</b> Make sure Spotify is open and has played something on your target device at least once — devices that have never played return "no active device" errors.<br>' +
 					'<b>Buttons stop mid-show?</b> The Spotify app may have gone idle. Hit play manually once and Companion will reconnect within 2 seconds.<br>' +
 					'<b>Re-authenticate if:</b> you changed your Spotify password, or the module shows a red connection error that does not clear automatically.<br>' +
-					'<b>Bookmarks:</b> Save Bookmark captures the current track, position, and playlist/album context. Resume Bookmark returns to that track and position — if it was in a playlist or album, next/prev will continue from there. Due to a Spotify API limitation, playback briefly starts from the beginning of the track before jumping to the saved position. The Spotify app UI may not update to show the playlist view.',
+					'<b>Bookmarks:</b> Save Bookmark captures the current track, position, and playlist/album context. Resume Bookmark returns to that track and position — if it was in a playlist or album, next/prev will continue from there. Due to a Spotify API limitation, playback briefly starts from the beginning of the track before jumping to the saved position. The Spotify app UI may not update to show the playlist view.<br>' +
+						'<b>Offline / AppleScript fallback (macOS only):</b> If the Spotify Web API becomes unreachable (no internet, firewall, etc.), this module automatically switches to controlling Spotify via AppleScript after ~6 seconds. Transport controls continue to work: play, pause, next, previous, seek, volume, shuffle, repeat. Actions that require the internet — Play by URI, Play Playlist, Add to Queue, Like/Unlike, and Bookmark Resume — will log a warning and do nothing. Track name, artist, and position are still updated from the local app. The module switches back to the Web API automatically when connectivity returns. This fallback is macOS only.',
 				width: 12,
 			},
 		]

@@ -47,6 +47,10 @@ function getActions() {
 			name: 'Play',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.play() } catch (e) { self.log('error', `Play failed: ${e.message}`) }
+					return
+				}
 				try {
 					try {
 						await self.spotify.play()
@@ -70,6 +74,10 @@ function getActions() {
 			name: 'Pause',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.pause() } catch (e) { self.log('error', `Pause failed: ${e.message}`) }
+					return
+				}
 				try {
 					await self.spotify.pause()
 				} catch (e) {
@@ -82,6 +90,10 @@ function getActions() {
 			name: 'Play/Pause Toggle',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.playpause() } catch (e) { self.log('error', `Play/pause failed: ${e.message}`) }
+					return
+				}
 				const isPlaying = self.state.playerState === 'Playing'
 				try {
 					if (isPlaying) {
@@ -108,13 +120,25 @@ function getActions() {
 		next: {
 			name: 'Next Track',
 			options: [],
-			callback: async () => { await self.spotify.next() },
+			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.next() } catch (e) { self.log('error', `Next track failed: ${e.message}`) }
+					return
+				}
+				await self.spotify.next()
+			},
 		},
 
 		previous: {
 			name: 'Previous Track',
 			options: [],
-			callback: async () => { await self.spotify.previous() },
+			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.previous() } catch (e) { self.log('error', `Previous track failed: ${e.message}`) }
+					return
+				}
+				await self.spotify.previous()
+			},
 		},
 
 		playTrack: {
@@ -137,6 +161,10 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Play Track By ID requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let raw = await self.parseVariablesInString(action.options.track)
 				let track = normaliseTrackUri(raw)
 				let positionRaw = (action.options.position || '').trim()
@@ -195,6 +223,10 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Play Playlist requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let raw = await self.parseVariablesInString(action.options.context)
 				let context = normaliseContextUri(raw)
 				if (!context || context === 'spotify:playlist:' || context === 'spotify:album:' || context === 'spotify:artist:') {
@@ -253,6 +285,10 @@ function getActions() {
 				let positionMs = parsePositionToMs(action.options.position)
 				let max = self.state.durationMs || positionMs
 				positionMs = Math.max(0, Math.min(positionMs, max))
+				if (self._useAppleScript) {
+					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Seek failed: ${e.message}`) }
+					return
+				}
 				await self.spotify.seekTo(positionMs)
 			},
 		},
@@ -276,6 +312,10 @@ function getActions() {
 				let positionMs = self.state.positionMs + action.options.seconds * 1000
 				let max = self.state.durationMs || positionMs
 				positionMs = Math.min(positionMs, max)
+				if (self._useAppleScript) {
+					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Skip forward failed: ${e.message}`) }
+					return
+				}
 				await self.spotify.seekTo(positionMs)
 			},
 		},
@@ -297,6 +337,10 @@ function getActions() {
 			],
 			callback: async (action) => {
 				let positionMs = Math.max(0, self.state.positionMs - action.options.seconds * 1000)
+				if (self._useAppleScript) {
+					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Skip back failed: ${e.message}`) }
+					return
+				}
 				await self.spotify.seekTo(positionMs)
 			},
 		},
@@ -318,6 +362,10 @@ function getActions() {
 			],
 			callback: async (action) => {
 				let positionMs = Math.max(0, self.state.positionMs + action.options.seconds * 1000)
+				if (self._useAppleScript) {
+					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Move position failed: ${e.message}`) }
+					return
+				}
 				await self.spotify.seekTo(positionMs)
 			},
 		},
@@ -338,6 +386,13 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(action.options.volume) } catch (e) {}
+					self.state.volume = action.options.volume
+					self._volumeSetAt = Date.now()
+					updateVariables.call(self)
+					return
+				}
 				await self.spotify.setVolume(action.options.volume)
 				self.state.volume = action.options.volume
 				self._volumeSetAt = Date.now()
@@ -350,7 +405,11 @@ function getActions() {
 			options: [],
 			callback: async () => {
 				self._premuteVolume = self.state.volume || 50
-				await self.spotify.setVolume(0)
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(0) } catch (e) {}
+				} else {
+					await self.spotify.setVolume(0)
+				}
 				self.state.volume = 0
 			},
 		},
@@ -360,7 +419,11 @@ function getActions() {
 			options: [],
 			callback: async () => {
 				let restore = (self._premuteVolume > 0) ? self._premuteVolume : 50
-				await self.spotify.setVolume(restore)
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(restore) } catch (e) {}
+				} else {
+					await self.spotify.setVolume(restore)
+				}
 				self.state.volume = restore
 			},
 		},
@@ -371,11 +434,19 @@ function getActions() {
 			callback: async () => {
 				if (self.state.volume === 0) {
 					let restore = (self._premuteVolume > 0) ? self._premuteVolume : 50
-					await self.spotify.setVolume(restore)
+					if (self._useAppleScript) {
+						try { await self._as.setVolume(restore) } catch (e) {}
+					} else {
+						await self.spotify.setVolume(restore)
+					}
 					self.state.volume = restore
 				} else {
 					self._premuteVolume = self.state.volume
-					await self.spotify.setVolume(0)
+					if (self._useAppleScript) {
+						try { await self._as.setVolume(0) } catch (e) {}
+					} else {
+						await self.spotify.setVolume(0)
+					}
 					self.state.volume = 0
 				}
 			},
@@ -400,7 +471,11 @@ function getActions() {
 				let v = Math.min(100, (self.state.volume || 0) + action.options.amount)
 				self.state.volume = v
 				self._volumeSetAt = Date.now()
-				await self.spotify.setVolume(v)
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(v) } catch (e) {}
+				} else {
+					await self.spotify.setVolume(v)
+				}
 			},
 		},
 
@@ -423,7 +498,11 @@ function getActions() {
 				let v = Math.max(0, (self.state.volume || 0) - action.options.amount)
 				self.state.volume = v
 				self._volumeSetAt = Date.now()
-				await self.spotify.setVolume(v)
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(v) } catch (e) {}
+				} else {
+					await self.spotify.setVolume(v)
+				}
 			},
 		},
 
@@ -431,6 +510,10 @@ function getActions() {
 			name: 'Shuffle On',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setShuffle(true) } catch (e) { self.log('error', `Shuffle on failed: ${e.message}`) }
+					return
+				}
 				self._smartShuffleWarned = false
 				try {
 					await self.spotify.setShuffle(true)
@@ -445,6 +528,10 @@ function getActions() {
 			name: 'Shuffle Off',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setShuffle(false) } catch (e) { self.log('error', `Shuffle off failed: ${e.message}`) }
+					return
+				}
 				self._smartShuffleWarned = false
 				try {
 					await self.spotify.setShuffle(false)
@@ -459,6 +546,10 @@ function getActions() {
 			name: 'Shuffle Toggle',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setShuffle(!self.state.isShuffling) } catch (e) { self.log('error', `Shuffle toggle failed: ${e.message}`) }
+					return
+				}
 				const next = !self.state.isShuffling
 				self._smartShuffleWarned = false
 				try {
@@ -474,6 +565,10 @@ function getActions() {
 			name: 'Repeat Off',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setRepeat('off') } catch (e) { self.log('error', `Repeat off failed: ${e.message}`) }
+					return
+				}
 				try {
 					await self.spotify.setRepeat('off')
 				} catch (e) {
@@ -486,6 +581,10 @@ function getActions() {
 			name: 'Repeat Track',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setRepeat('track') } catch (e) { self.log('error', `Repeat track failed: ${e.message}`) }
+					return
+				}
 				try {
 					await self.spotify.setRepeat('track')
 				} catch (e) {
@@ -498,6 +597,10 @@ function getActions() {
 			name: 'Repeat Playlist/Album',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setRepeat('context') } catch (e) { self.log('error', `Repeat context failed: ${e.message}`) }
+					return
+				}
 				try {
 					await self.spotify.setRepeat('context')
 				} catch (e) {
@@ -510,6 +613,11 @@ function getActions() {
 			name: 'Repeat Toggle (Off → Track → Playlist → Off)',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					// AppleScript repeat is boolean only - toggle between off and on
+					try { await self._as.setRepeat(self.state.repeatMode === 'off' ? 'context' : 'off') } catch (e) { self.log('error', `Repeat toggle failed: ${e.message}`) }
+					return
+				}
 				let next = 'off'
 				if (self.state.repeatMode === 'off') next = 'track'
 				else if (self.state.repeatMode === 'track') next = 'context'
@@ -525,6 +633,10 @@ function getActions() {
 			name: 'Repeat Toggle (Off ↔ Playlist)',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setRepeat(self.state.repeatMode === 'off' ? 'context' : 'off') } catch (e) { self.log('error', `Repeat toggle failed: ${e.message}`) }
+					return
+				}
 				const next = self.state.repeatMode === 'off' ? 'context' : 'off'
 				try {
 					await self.spotify.setRepeat(next)
@@ -538,6 +650,10 @@ function getActions() {
 			name: 'Repeat Toggle (Off ↔ Track)',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					try { await self._as.setRepeat(self.state.repeatMode === 'off' ? 'context' : 'off') } catch (e) { self.log('error', `Repeat toggle failed: ${e.message}`) }
+					return
+				}
 				const next = self.state.repeatMode === 'off' ? 'track' : 'off'
 				try {
 					await self.spotify.setRepeat(next)
@@ -585,7 +701,11 @@ function getActions() {
 					current++
 					let vol = Math.round(Math.min(100, Math.max(0, start + stepVol * current)))
 					try {
-						await self.spotify.setVolume(vol)
+						if (self._useAppleScript) {
+							await self._as.setVolume(vol)
+						} else {
+							await self.spotify.setVolume(vol)
+						}
 						self.state.volume = vol
 					} catch (e) {}
 					if (current >= steps) {
@@ -624,20 +744,30 @@ function getActions() {
 			callback: async (action) => {
 				let target = action.options.target
 				let duration = action.options.duration * 1000
-				try { await self.spotify.setVolume(0) } catch (e) {}
-				self.state.volume = 0
-				updateVariables.call(self)
-				try {
-					await self.spotify.play()
-				} catch (e) {
-					if (/no active device|device.*not.*found/i.test(e.message)) {
-						try {
-							let pick = await self.ensureActiveDevice()
-							if (!pick) { self.log('error', 'Play+Fade: no devices'); return }
-							await self.spotify.play(pick.id)
-						} catch (e2) { self.log('error', `Play+Fade play failed: ${e2.message}`); return }
-					} else {
-						self.log('error', `Play+Fade play failed: ${e.message}`); return
+				if (self._useAppleScript) {
+					try { await self._as.setVolume(0) } catch (e) {}
+					self.state.volume = 0
+					updateVariables.call(self)
+					try { await self._as.play() } catch (e) {
+						self.log('error', `Play+Fade play failed: ${e.message}`)
+						return
+					}
+				} else {
+					try { await self.spotify.setVolume(0) } catch (e) {}
+					self.state.volume = 0
+					updateVariables.call(self)
+					try {
+						await self.spotify.play()
+					} catch (e) {
+						if (/no active device|device.*not.*found/i.test(e.message)) {
+							try {
+								let pick = await self.ensureActiveDevice()
+								if (!pick) { self.log('error', 'Play+Fade: no devices'); return }
+								await self.spotify.play(pick.id)
+							} catch (e2) { self.log('error', `Play+Fade play failed: ${e2.message}`); return }
+						} else {
+							self.log('error', `Play+Fade play failed: ${e.message}`); return
+						}
 					}
 				}
 				self.state.playerState = 'Playing'
@@ -651,7 +781,11 @@ function getActions() {
 					current++
 					let vol = Math.round(Math.min(target, Math.max(0, stepVol * current)))
 					try {
-						await self.spotify.setVolume(vol)
+						if (self._useAppleScript) {
+							await self._as.setVolume(vol)
+						} else {
+							await self.spotify.setVolume(vol)
+						}
 						self.state.volume = vol
 						updateVariables.call(self)
 					} catch (e) {}
@@ -676,6 +810,10 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Add to Queue requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let raw = await self.parseVariablesInString(action.options.track)
 				let track = normaliseTrackUri(raw)
 				try {
@@ -691,6 +829,10 @@ function getActions() {
 			name: 'Save / Like Current Track',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Save Track requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let id = (self.state.trackId || '').replace('spotify:track:', '')
 				if (!id) return
 				try {
@@ -707,6 +849,10 @@ function getActions() {
 			name: 'Remove / Unlike Current Track',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Remove Track requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let id = (self.state.trackId || '').replace('spotify:track:', '')
 				if (!id) return
 				try {
@@ -723,6 +869,10 @@ function getActions() {
 			name: 'Toggle Like / Unlike Current Track',
 			options: [],
 			callback: async () => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Like/Unlike requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let id = (self.state.trackId || '').replace('spotify:track:', '')
 				if (!id) return
 				try {
@@ -780,6 +930,10 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
+				if (self._useAppleScript) {
+					self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
+					return
+				}
 				let slot = (action.options.slot || 'main').trim()
 				let bm = self.config.bookmarks && self.config.bookmarks[slot]
 				if (!bm || !bm.trackUri) {
@@ -858,6 +1012,10 @@ function getActions() {
 					self.log('info', `SAVED "${slot}": ${self.state.trackName} @ ${Math.floor((self.state.positionMs || 0) / 1000)}s`)
 				} else {
 					// Bookmark exists → resume it, then clear so next press saves again
+					if (self._useAppleScript) {
+						self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
+						return
+					}
 					let contextSupportsOffset = bm.contextUri && /^spotify:(playlist|album):/.test(bm.contextUri)
 					try {
 						if (contextSupportsOffset) {

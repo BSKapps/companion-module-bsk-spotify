@@ -15,7 +15,8 @@ Requires Spotify Premium and a Spotify Developer app (free to create).
 - **Auto-launch Spotify** — opens Spotify automatically if no active device is found
 - **Smart Shuffle support** — works around Spotify's double-call requirement for Smart Shuffle
 - **API health feedback** — status variable and feedback for API connectivity
-- ~98 presets across 15 categories
+- ~99 presets across 15 categories
+- **macOS offline fallback** - if the Spotify API is unreachable, transport actions (play, pause, next, previous, seek, volume, shuffle, repeat) fall through to AppleScript and continue working via the local Spotify app. Internet-only actions (track lookup, playlists, queue, like, bookmark resume) require the API to recover. Auto-recovers when the API returns. macOS only.
 
 ## Requirements
 

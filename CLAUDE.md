@@ -25,7 +25,7 @@ Bitfocus Companion module for Spotify Web API control. Full-featured replacement
 | `src/presets.js` | ~99 presets across 15 categories |
 | `src/albumart.js` | jimp-based album art download + grid slicing (1x1, 2x2, 3x3) |
 | `src/icons.js` | Base64 icon data for transport icon presets |
-| `companion/manifest.json` | Module manifest (id: bsk-spotify, version: 1.1.0) |
+| `companion/manifest.json` | Module manifest (id: bsk-spotify, version: 1.0.0) |
 | `tests/` | Jest tests for feedbacks, variables, spotify client |
 
 ## Key Design Decisions
@@ -48,11 +48,9 @@ Bitfocus Companion module for Spotify Web API control. Full-featured replacement
 Playback, Transport Icons, Display, Track Info, Volume, Shuffle, Repeat, Toggles, Combo, Playlist, Device, Bookmark, Timestamp Cue, Album Art, Health
 
 ## Version
-1.1.0 - LOCKED. Do not change until release.
+1.0.0 - LOCKED. Do not change until Bitfocus officially accepts the module.
 
-Released:
-- 1.0.0 (7 May 2026) - initial release
-- 1.1.0 (9 May 2026) - macOS AppleScript offline fallback for transport actions
+The macOS AppleScript fallback and other improvements committed after v1.0.0 stay on main but are not versioned. Once Bitfocus accepts the module, bump to 1.1.0 and cut a new release that includes these.
 
 ## Pending
 - Bitfocus submission after user testing

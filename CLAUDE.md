@@ -21,7 +21,7 @@ Bitfocus Companion module for Spotify Web API control. Full-featured replacement
 | `src/applescript.js` | AppleScriptSpotify — osascript wrapper for offline fallback (macOS only) |
 | `src/actions.js` | All action definitions — API call only, state updated on next poll |
 | `src/feedbacks.js` | 13 feedbacks — playback, shuffle, repeat, track match, health, bookmark, album art |
-| `src/variables.js` | 33 variables — track info, timing, shuffle, repeat, liked, api_status, playlist_name, 4 cycling display variants |
+| `src/variables.js` | 30 variables - track info, timing, shuffle, repeat, liked, api_status, playlist_name, cycling display variants |
 | `src/presets.js` | ~99 presets across 15 categories |
 | `src/albumart.js` | jimp-based album art download + grid slicing (1x1, 2x2, 3x3) |
 | `src/icons.js` | Base64 icon data for transport icon presets |

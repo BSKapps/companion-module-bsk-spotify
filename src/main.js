@@ -422,7 +422,7 @@ class SpotifyInstance extends InstanceBase {
 				value:
 					'Full walkthrough with screenshots: <a href="https://bskapps.com/resources/companion/" target="_blank">bskapps.com/resources/companion</a><br><br>' +
 					'<b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a>, log in, and click Create App. Give it any name.<br>' +
-					'<b>Step 2:</b> Set the Redirect URI to <code>http://127.0.0.1:4115/callback</code> and save.<br>' +
+					'<b>Step 2:</b> Set the Redirect URI to <code>http://127.0.0.1:4115/callback</code> exactly, then click Add. Check that it appears in the list -- if it does not, it was not saved.<br>' +
 					'<b>Step 3:</b> Open your new app\'s Settings and copy the Client ID and Client Secret into the fields below.<br>' +
 					'<b>Step 4:</b> Save this config.<br>' +
 					'<b>Step 5:</b> Open the Authenticate URL shown below in your browser.',

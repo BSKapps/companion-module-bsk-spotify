@@ -125,7 +125,11 @@ function getActions() {
 					try { await self._as.next() } catch (e) { self.log('error', `Next track failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.next()
+				try {
+					await self.spotify.next()
+				} catch (e) {
+					self.log('error', `Next track failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -137,7 +141,11 @@ function getActions() {
 					try { await self._as.previous() } catch (e) { self.log('error', `Previous track failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.previous()
+				try {
+					await self.spotify.previous()
+				} catch (e) {
+					self.log('error', `Previous track failed: ${e.message}`)
+				}
 			},
 		},
 
@@ -411,6 +419,7 @@ function getActions() {
 					await self.spotify.setVolume(0)
 				}
 				self.state.volume = 0
+				updateVariables.call(self)
 			},
 		},
 
@@ -425,6 +434,7 @@ function getActions() {
 					await self.spotify.setVolume(restore)
 				}
 				self.state.volume = restore
+				updateVariables.call(self)
 			},
 		},
 
@@ -514,10 +524,9 @@ function getActions() {
 					try { await self._as.setShuffle(true) } catch (e) { self.log('error', `Shuffle on failed: ${e.message}`) }
 					return
 				}
-				self._smartShuffleWarned = false
 				try {
 					await self.spotify.setShuffle(true)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(true)
+					await self.spotify.setShuffle(true)
 				} catch (e) {
 					self.log('error', `Shuffle on failed: ${e.message}`)
 				}
@@ -532,10 +541,9 @@ function getActions() {
 					try { await self._as.setShuffle(false) } catch (e) { self.log('error', `Shuffle off failed: ${e.message}`) }
 					return
 				}
-				self._smartShuffleWarned = false
 				try {
 					await self.spotify.setShuffle(false)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(false)
+					await self.spotify.setShuffle(false)
 				} catch (e) {
 					self.log('error', `Shuffle off failed: ${e.message}`)
 				}
@@ -551,10 +559,9 @@ function getActions() {
 					return
 				}
 				const next = !self.state.isShuffling
-				self._smartShuffleWarned = false
 				try {
 					await self.spotify.setShuffle(next)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(next)
+					await self.spotify.setShuffle(next)
 				} catch (e) {
 					self.log('error', `Shuffle toggle failed: ${e.message}`)
 				}
@@ -1020,6 +1027,8 @@ function getActions() {
 					try {
 						if (contextSupportsOffset) {
 							await self.spotify.playContextAtTrackUri(bm.contextUri, bm.trackUri, 0)
+							try { await self.spotify.setShuffle(self.state.isShuffling) } catch (e) {}
+							try { await self.spotify.setRepeat(self.state.repeatMode || 'off') } catch (e) {}
 							if (bm.positionMs > 0) {
 								await new Promise((r) => setTimeout(r, 1500))
 								await self.spotify.seekTo(bm.positionMs)

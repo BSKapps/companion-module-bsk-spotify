@@ -4,12 +4,13 @@ const { Jimp } = require('jimp')
 
 const BUTTON_SIZE = 72
 
-function fetchUrl(url) {
+function fetchUrl(url, depth = 0) {
 	return new Promise((resolve, reject) => {
+		if (depth > 5) return reject(new Error('Too many redirects'))
 		let client = url.startsWith('https') ? https : http
 		client.get(url, (res) => {
 			if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-				return fetchUrl(res.headers.location).then(resolve).catch(reject)
+				return fetchUrl(res.headers.location, depth + 1).then(resolve).catch(reject)
 			}
 			let chunks = []
 			res.on('data', (d) => chunks.push(d))

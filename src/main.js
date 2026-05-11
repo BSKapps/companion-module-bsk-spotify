@@ -78,6 +78,10 @@ class SpotifyInstance extends InstanceBase {
 	async configUpdated(config) {
 		this.config = config
 		this.stopPolling()
+		this._consecutivePollErrors = 0
+		this._apiHealthy = true
+		this._useAppleScript = false
+		this._asPollCount = 0
 		await this.applyConfig(config)
 	}
 
@@ -167,6 +171,9 @@ class SpotifyInstance extends InstanceBase {
 			try { self.oauthServer.close() } catch (e) {}
 		})
 
+		this.oauthServer.on('error', (e) => {
+			this.log('error', `OAuth server error: ${e.message}`)
+		})
 		this.oauthServer.listen(OAUTH_PORT, '127.0.0.1', () => {
 			this.log('info', `OAuth server listening on port ${OAUTH_PORT}`)
 		})

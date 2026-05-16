@@ -14,6 +14,7 @@ Requires Spotify Premium and a Spotify Developer app (free to create).
 - **Playlist name** — dedicated variable for current playlist name, lazily fetched and cached
 - **Auto-launch Spotify** — opens Spotify automatically if no active device is found
 - **Smart Shuffle support** — works around Spotify's double-call requirement for Smart Shuffle
+- **AppleScript offline fallback** (macOS only) — after 3 consecutive API failures (~6s), automatically switches to local AppleScript control so transport keeps working without internet. Switches back to the Web API automatically when connectivity returns.
 - **API health feedback** — status variable and feedback for API connectivity
 - ~99 presets across 15 categories
 
@@ -54,6 +55,20 @@ Track info, position, duration, shuffle/repeat state, playlist name, API health,
 ## Feedbacks
 
 Playing, paused, shuffle on/off, repeat mode, track match, liked, bookmark exists, API healthy, album art (per grid slot). 13 feedbacks total.
+
+## AppleScript Offline Fallback (macOS only)
+
+After 3 consecutive Web API failures (~6s), the module switches automatically to local AppleScript control. Transport actions continue to work without internet:
+
+| Works offline | Requires internet |
+|---|---|
+| Play / Pause / Toggle | Play by URI |
+| Next / Previous | Play playlist |
+| Seek | Add to queue |
+| Volume | Like / Unlike |
+| Shuffle / Repeat | Bookmark resume |
+
+The module retries the Web API every ~20s and switches back automatically when connectivity returns. Repeat mode in AppleScript is boolean only (on/off) — Track and Context both map to repeat on.
 
 ## Known Limitations
 

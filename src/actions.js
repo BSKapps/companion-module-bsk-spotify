@@ -38,6 +38,14 @@ function normaliseContextUri(input) {
 }
 
 
+async function simpleAction(self, label, asFn, apiFn) {
+	if (self._useAppleScript) {
+		try { await asFn() } catch (e) { self.log('error', `${label} failed: ${e.message}`) }
+		return
+	}
+	try { await apiFn() } catch (e) { self.log('error', `${label} failed: ${e.message}`) }
+}
+
 function getActions() {
 	let self = this
 
@@ -73,17 +81,7 @@ function getActions() {
 		pause: {
 			name: 'Pause',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.pause() } catch (e) { self.log('error', `Pause failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.pause()
-				} catch (e) {
-					self.log('error', `Pause failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Pause', () => self._as.pause(), () => self.spotify.pause()),
 		},
 
 		playToggle: {
@@ -120,33 +118,13 @@ function getActions() {
 		next: {
 			name: 'Next Track',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.next() } catch (e) { self.log('error', `Next track failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.next()
-				} catch (e) {
-					self.log('error', `Next track failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Next track', () => self._as.next(), () => self.spotify.next()),
 		},
 
 		previous: {
 			name: 'Previous Track',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.previous() } catch (e) { self.log('error', `Previous track failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.previous()
-				} catch (e) {
-					self.log('error', `Previous track failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Previous track', () => self._as.previous(), () => self.spotify.previous()),
 		},
 
 		playTrack: {
@@ -526,7 +504,7 @@ function getActions() {
 				}
 				try {
 					await self.spotify.setShuffle(true)
-					await self.spotify.setShuffle(true)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(true)
 				} catch (e) {
 					self.log('error', `Shuffle on failed: ${e.message}`)
 				}
@@ -543,7 +521,7 @@ function getActions() {
 				}
 				try {
 					await self.spotify.setShuffle(false)
-					await self.spotify.setShuffle(false)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(false)
 				} catch (e) {
 					self.log('error', `Shuffle off failed: ${e.message}`)
 				}
@@ -561,7 +539,7 @@ function getActions() {
 				const next = !self.state.isShuffling
 				try {
 					await self.spotify.setShuffle(next)
-					await self.spotify.setShuffle(next)
+					if (self._smartShuffleWarned) await self.spotify.setShuffle(next)
 				} catch (e) {
 					self.log('error', `Shuffle toggle failed: ${e.message}`)
 				}
@@ -571,49 +549,19 @@ function getActions() {
 		repeatOff: {
 			name: 'Repeat Off',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.setRepeat('off') } catch (e) { self.log('error', `Repeat off failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.setRepeat('off')
-				} catch (e) {
-					self.log('error', `Repeat off failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Repeat off', () => self._as.setRepeat('off'), () => self.spotify.setRepeat('off')),
 		},
 
 		repeatTrack: {
 			name: 'Repeat Track',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.setRepeat('track') } catch (e) { self.log('error', `Repeat track failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.setRepeat('track')
-				} catch (e) {
-					self.log('error', `Repeat track failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Repeat track', () => self._as.setRepeat('track'), () => self.spotify.setRepeat('track')),
 		},
 
 		repeatContext: {
 			name: 'Repeat Playlist/Album',
 			options: [],
-			callback: async () => {
-				if (self._useAppleScript) {
-					try { await self._as.setRepeat('context') } catch (e) { self.log('error', `Repeat context failed: ${e.message}`) }
-					return
-				}
-				try {
-					await self.spotify.setRepeat('context')
-				} catch (e) {
-					self.log('error', `Repeat context failed: ${e.message}`)
-				}
-			},
+			callback: () => simpleAction(self, 'Repeat context', () => self._as.setRepeat('context'), () => self.spotify.setRepeat('context')),
 		},
 
 		repeatToggleAll: {

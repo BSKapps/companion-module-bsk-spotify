@@ -144,7 +144,6 @@ function getPresets() {
 	// ====== TRACK INFO ======
 	presets.push({
 		type: 'button',
-		type: 'button',
 		category: 'Track Info',
 		name: 'Album Name',
 		style: { text: '$(bsk-spotify:album)', size: '14', color: white, bgcolor: black },
@@ -725,7 +724,7 @@ function getPresets() {
 		feedbacks: [{ feedbackId: 'isPlaying', options: {}, style: { color: white, bgcolor: darkGreen } }],
 	})
 
-// ====== ALBUM ART ======
+	// ====== ALBUM ART ======
 	presets.push({
 		type: 'button',
 		category: 'Album Art',

@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 MODULES="$HOME/Library/Application Support/companion/modules"
-NAME="bsk-spotify-1.0.1"
+VERSION=$(node -p "require('./package.json').version")
+NAME="bsk-spotify-$VERSION"
 
 npm run build
-# Remove all old bsk-spotify versions
 rm -rf "$MODULES"/bsk-spotify-*
 cp -r pkg "$MODULES/$NAME"
-echo "Deployed to Companion. Restart the module connection in Companion."
+echo "Deployed $NAME to Companion. Restart Companion fully to pick up changes."

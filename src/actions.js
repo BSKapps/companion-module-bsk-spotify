@@ -89,7 +89,14 @@ function getActions() {
 			options: [],
 			callback: async () => {
 				if (self._useAppleScript) {
-					try { await self._as.playpause() } catch (e) { self.log('error', `Play/pause failed: ${e.message}`) }
+					try {
+						let s = await self._as.pollState()
+						if (s.playerState === 'Playing') {
+							await self._as.pause()
+						} else {
+							await self._as.play()
+						}
+					} catch (e) { self.log('error', `Play/pause failed: ${e.message}`) }
 					return
 				}
 				const isPlaying = self.state.playerState === 'Playing'

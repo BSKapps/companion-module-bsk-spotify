@@ -9,6 +9,7 @@ const { getVariables, updateVariables } = require('./variables')
 const SpotifyClient = require('./spotify')
 const AppleScriptSpotify = require('./applescript')
 const { processAlbumArt } = require('./albumart')
+const UpgradeScripts = require('./upgrades')
 
 const POLL_INTERVAL_MS = 2000
 const TICK_INTERVAL_MS = 500
@@ -501,4 +502,4 @@ class SpotifyInstance extends InstanceBase {
 	}
 }
 
-runEntrypoint(SpotifyInstance, [])
+runEntrypoint(SpotifyInstance, UpgradeScripts)

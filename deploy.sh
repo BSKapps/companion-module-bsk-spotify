@@ -4,7 +4,7 @@ MODULES="$HOME/Library/Application Support/companion/modules"
 VERSION=$(node -p "require('./package.json').version")
 NAME="bsk-spotify-$VERSION"
 
-npm run build
+yarn build
 rm -rf "$MODULES"/bsk-spotify-*
 cp -r pkg "$MODULES/$NAME"
 echo "Deployed $NAME to Companion. Restart Companion fully to pick up changes."

@@ -3,3 +3,7 @@ pkg/
 *.tgz
 .DS_Store
 icons-personal/
+main.js
+main.js.LICENSE.txt
+index.js
+coverage/

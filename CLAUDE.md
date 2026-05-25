@@ -54,3 +54,32 @@ The macOS AppleScript fallback and other improvements committed after v1.0.0 sta
 
 ## Pending
 - Bitfocus submission after user testing
+
+## Smoke Tests
+
+Run after any change, before deploy.
+
+### Deploy
+- [ ] `./deploy.sh` completes without error
+- [ ] In Companion: disable + re-enable the Spotify connection -- no crash, status goes green
+
+### Playback controls
+- [ ] Play/Pause action toggles correctly
+- [ ] Next/Previous track actions work
+- [ ] Volume up/down changes volume
+- [ ] Shuffle toggle changes state, feedback updates
+
+### Feedbacks
+- [ ] Play/pause feedback reflects actual playback state within 2s poll cycle
+- [ ] Track match feedback triggers when correct track is playing
+- [ ] Health feedback shows green when connected, red when API unreachable
+
+### Variables
+- [ ] `track_name`, `artist_name`, `album_name` update on track change
+- [ ] `position_ms` increments smoothly between polls (interpolator working)
+- [ ] `playlist_name` populates when playing from a playlist
+
+### Resilience
+- [ ] Spotify closed: AppleScript fallback activates (macOS), module stays in Warning not ConnectionFailure
+- [ ] Spotify reopened: module recovers to API mode within ~20s (10th poll retry)
+- [ ] 31 Jest tests pass: `npm test`

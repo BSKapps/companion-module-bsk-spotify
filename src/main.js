@@ -186,7 +186,7 @@ class SpotifyInstance extends InstanceBase {
 		if (process.platform === 'darwin') cmd = 'open -a Spotify'
 		else if (process.platform === 'win32') cmd = 'start spotify:'
 		else cmd = 'xdg-open spotify:'
-		this.log('info', `No active Spotify device — launching Spotify (${process.platform})`)
+		this.log('info', `No active Spotify device - launching Spotify (${process.platform})`)
 		exec(cmd, (err) => {
 			if (err) this.log('warn', `Could not launch Spotify: ${err.message}`)
 		})
@@ -419,12 +419,9 @@ class SpotifyInstance extends InstanceBase {
 				id: 'info',
 				label: 'Setup Instructions',
 				value:
-					'Full walkthrough with screenshots: <a href="https://bskapps.com/resources/companion/" target="_blank">bskapps.com/resources/companion</a><br><br>' +
-					'<b>Step 1:</b> Go to <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a>, log in, and click Create App. Give it any name.<br>' +
-					'<b>Step 2:</b> Set the Redirect URI to <code>http://127.0.0.1:4115/callback</code> exactly, then click Add. Check that it appears in the list -- if it does not, it was not saved.<br>' +
-					'<b>Step 3:</b> Open your new app\'s Settings and copy the Client ID and Client Secret into the fields below.<br>' +
-					'<b>Step 4:</b> Save this config.<br>' +
-					'<b>Step 5:</b> Open the Authenticate URL shown below in your browser.',
+					'Create an app at <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a> with the Redirect URI <code>http://127.0.0.1:4115/callback</code>, ' +
+					'copy its Client ID and Client Secret below, save, then open the auth link below in your browser. ' +
+					'Full walkthrough with screenshots: <a href="https://bskapps.com/resources/companion/" target="_blank">bskapps.com/resources/companion</a>',
 				width: 12,
 			},
 			{
@@ -445,7 +442,7 @@ class SpotifyInstance extends InstanceBase {
 				type: 'static-text',
 				id: 'authUrl',
 				label: 'Authenticate',
-				value: 'After saving Client ID and Secret, click: <a href="javascript:void(0)" onclick="(function(){var u=\'http://127.0.0.1:4115/auth\';window.open(u,\'_blank\');})()">Open Auth URL</a><br><small>Or manually visit: http://127.0.0.1:4115/auth</small>',
+				value: 'After saving the Client ID and Secret, open <a href="http://127.0.0.1:4115/auth" target="_blank">http://127.0.0.1:4115/auth</a> in your browser.',
 				width: 12,
 			},
 			{
@@ -458,24 +455,22 @@ class SpotifyInstance extends InstanceBase {
 			{
 				type: 'number',
 				id: 'displayCycleSeconds',
-				label: 'Cycling Display Speed (seconds) — global',
+				label: 'Cycling Display Speed (seconds)',
 				width: 6,
 				default: 2,
 				min: 1,
 				max: 30,
 				step: 1,
-				tooltip: 'Global setting for the $(bsk-spotify:display) variable, which rotates Track / Artist / Album. This is shared across the whole module — every button using $(bsk-spotify:display) will cycle at the same speed. Cannot be set per-button.',
+				tooltip: 'How fast the cycling display variables rotate between Track / Artist / Album. Shared by every button that uses them.',
 			},
 			{
 				type: 'static-text',
 				id: 'tips',
 				label: 'Tips',
 				value:
-					'<b>Nothing working?</b> Make sure Spotify is open and has played something on your target device at least once — devices that have never played return "no active device" errors.<br>' +
-					'<b>Buttons stop mid-show?</b> The Spotify app may have gone idle. Hit play manually once and Companion will reconnect within 2 seconds.<br>' +
-					'<b>Re-authenticate if:</b> you changed your Spotify password, or the module shows a red connection error that does not clear automatically.<br>' +
-					'<b>Bookmarks:</b> Save Bookmark captures the current track, position, and playlist/album context. Resume Bookmark returns to that track and position — if it was in a playlist or album, next/prev will continue from there. Due to a Spotify API limitation, playback briefly starts from the beginning of the track before jumping to the saved position. The Spotify app UI may not update to show the playlist view.<br>' +
-						'<b>Offline / AppleScript fallback (macOS only):</b> If the Spotify Web API becomes unreachable (no internet, firewall, etc.), this module automatically switches to controlling Spotify via AppleScript after ~6 seconds. Transport controls continue to work: play, pause, next, previous, seek, volume, shuffle, repeat. Actions that require the internet — Play by URI, Play Playlist, Add to Queue, Like/Unlike, and Bookmark Resume — will log a warning and do nothing. Track name, artist, and position are still updated from the local app. The module switches back to the Web API automatically when connectivity returns. This fallback is macOS only.',
+					'If nothing works, make sure Spotify is open and has played at least once on your target device. ' +
+					'Re-authenticate if you change your Spotify password. ' +
+					'See the help page (question mark, top right) for bookmarks and the macOS offline fallback.',
 				width: 12,
 			},
 		]

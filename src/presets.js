@@ -19,7 +19,6 @@ function getPresets() {
 
 	let presets = []
 
-	// ====== PLAYBACK ======
 	presets.push(
 		btn({
 			category: 'Playback',
@@ -100,7 +99,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== DISPLAY ======
 	presets.push(
 		btn({
 			category: 'Display',
@@ -170,7 +168,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== TRACK INFO ======
 	presets.push(
 		btn({
 			category: 'Track Info',
@@ -223,7 +220,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== VOLUME ======
 	presets.push(
 		btn({
 			category: 'Volume',
@@ -298,9 +294,9 @@ function getPresets() {
 		btn({
 			category: 'Volume',
 			name: 'Mute / Unmute Toggle (state-aware)',
-			style: { text: '🔊\\nUNMUTED', size: '12', color: white, bgcolor: black },
+			style: { text: 'UNMUTED', size: '12', color: white, bgcolor: black },
 			steps: [{ down: [{ actionId: 'muteToggle', options: {} }], up: [] }],
-			feedbacks: [{ feedbackId: 'volumeMuted', options: {}, style: { text: '🔇\\nMUTED', color: white, bgcolor: red } }],
+			feedbacks: [{ feedbackId: 'volumeMuted', options: {}, style: { text: 'MUTED', color: white, bgcolor: red } }],
 		}),
 		btn({
 			category: 'Volume',
@@ -325,7 +321,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== SHUFFLE ======
 	presets.push(
 		btn({
 			category: 'Shuffle',
@@ -350,7 +345,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== REPEAT ======
 	presets.push(
 		btn({
 			category: 'Repeat',
@@ -375,7 +369,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== PLAYLIST / CONTEXT ======
 	presets.push(
 		btn({
 			category: 'Playlist',
@@ -393,7 +386,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== DEVICE ======
 	presets.push(
 		btn({
 			category: 'Device',
@@ -411,7 +403,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== TRANSPORT ICONS ======
 	presets.push(
 		btn({
 			category: 'Transport Icons',
@@ -492,7 +483,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== TOGGLES ======
 	presets.push(
 		btn({
 			category: 'Toggles',
@@ -541,7 +531,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== COMBO ======
 	presets.push(
 		btn({
 			category: 'Combo',
@@ -588,7 +577,7 @@ function getPresets() {
 		btn({
 			category: 'Combo',
 			name: 'Time Display (Position / Duration / Remaining)',
-			style: { text: '+ $(bsk-spotify:position_hms)\\n   $(bsk-spotify:duration_hms)\\n– $(bsk-spotify:remaining_hms)', size: '18', color: white, bgcolor: black },
+			style: { text: '+ $(bsk-spotify:position_hms)\\n   $(bsk-spotify:duration_hms)\\n- $(bsk-spotify:remaining_hms)', size: '18', color: white, bgcolor: black },
 			steps: [{ down: [], up: [] }],
 			feedbacks: [{ feedbackId: 'nearEnd', options: { seconds: 20 }, style: { color: yellow, bgcolor: amber } }],
 		}),
@@ -615,14 +604,13 @@ function getPresets() {
 		}),
 	)
 
-	// ====== BOOKMARK ======
 	presets.push(
 		btn({
 			category: 'Bookmark',
 			name: 'Save Position (main)',
 			style: { text: 'SAVE\\nPOS', size: '14', color: white, bgcolor: orange },
 			steps: [{ down: [{ actionId: 'bookmarkSave', options: { slot: 'main' } }], up: [] }],
-			feedbacks: [{ feedbackId: 'bookmarkExists', options: { slot: 'main' }, style: { text: 'SAVED\\n✓', color: white, bgcolor: green } }],
+			feedbacks: [{ feedbackId: 'bookmarkExists', options: { slot: 'main' }, style: { text: 'SAVED', color: white, bgcolor: green } }],
 		}),
 		btn({
 			category: 'Bookmark',
@@ -647,7 +635,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== TIMESTAMP CUE ======
 	presets.push(
 		btn({
 			category: 'Timestamp Cue',
@@ -664,7 +651,6 @@ function getPresets() {
 		}),
 	)
 
-	// ====== ALBUM ART ======
 	presets.push(btn({
 		category: 'Album Art',
 		name: 'Album Art (1x1)',
@@ -696,7 +682,6 @@ function getPresets() {
 		}
 	}
 
-	// ====== HEALTH ======
 	presets.push(
 		btn({
 			category: 'Health',

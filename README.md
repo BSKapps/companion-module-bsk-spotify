@@ -1,79 +1,42 @@
 # companion-module-bsk-spotify
 
-Bitfocus Companion module for Spotify Web API control. Full-featured Spotify controller with cue-point playback, bookmarks, volume fades, and album art — designed for live show use.
-
-Requires Spotify Premium and a Spotify Developer app (free to create).
+Bitfocus Companion module that controls Spotify through the Spotify Web API, built for live show use. Requires Spotify Premium and a free Spotify Developer app.
 
 ## Features
 
-- **Cue-point playback** — start a track at an exact timestamp (M:SS:ms), ideal for live show cues
-- **Bookmarks** — save and resume named playback positions; multiple independent bookmark slots
-- **Volume fades** — fade in/out with configurable duration; combined playFadeIn action avoids race conditions
-- **Album art grids** — render album art across 1x1, 2x2, or 3x3 button grids; press to play/pause
-- **Cycling display** — rotate between track/artist/playlist info on a single button at configurable speed
-- **Playlist name** — dedicated variable for current playlist name, lazily fetched and cached
-- **Auto-launch Spotify** — opens Spotify automatically if no active device is found
-- **Smart Shuffle support** — works around Spotify's double-call requirement for Smart Shuffle
-- **AppleScript offline fallback** (macOS only) — after 3 consecutive API failures (~6s), automatically switches to local AppleScript control so transport keeps working without internet. Switches back to the Web API automatically when connectivity returns.
-- **API health feedback** — status variable and feedback for API connectivity
-- ~99 presets across 15 categories
+- Transport, volume, shuffle, and repeat control
+- Play a track or playlist/album from an exact timestamp, for show cues
+- Bookmarks: save a track + position + context to a named slot and resume it later
+- Volume fades, including a combined play-with-fade-in action
+- Album art rendered across 1x1, 2x2, or 3x3 button grids
+- Cycling display variables that rotate track / artist / album on one button
+- Automatic Spotify launch when no device is active
+- Offline fallback on macOS: transport control continues via AppleScript when the Web API is unreachable, and switches back when connectivity returns
+- API health feedback and status variable
 
-## Requirements
-
-- Spotify Premium account
-- Spotify Developer app (create at [developer.spotify.com](https://developer.spotify.com))
-- Redirect URI set to `http://127.0.0.1:4115/callback` in your Spotify app settings
+See [companion/HELP.md](companion/HELP.md) for the full list of actions, variables, and feedbacks.
 
 ## Setup
 
-1. Create a Spotify Developer app at [developer.spotify.com](https://developer.spotify.com)
+1. Create a Spotify Developer app at [developer.spotify.com](https://developer.spotify.com/dashboard)
 2. Add `http://127.0.0.1:4115/callback` as a Redirect URI
-3. In Companion, add the BSK Spotify connection
-4. Enter your Client ID and Client Secret, then click Authenticate
-5. Complete the OAuth flow in your browser
+3. Add the connection in Companion and enter the Client ID and Client Secret
+4. Open `http://127.0.0.1:4115/auth` in your browser and log in to Spotify
 
-## Actions
+A walkthrough with screenshots is at [bskapps.com/resources/companion](https://bskapps.com/resources/companion/).
 
-| Category | Actions |
-|---|---|
-| Playback | Play, Pause, Play/Pause toggle, Next, Previous, Seek |
-| Volume | Set volume, Fade in, Fade out, playFadeIn (combined) |
-| Shuffle | Enable, Disable, Toggle |
-| Repeat | Off, Track, Context, Cycle |
-| Playlist | Play playlist, Play playlist track by number |
-| Timestamp Cue | Play track from exact timestamp |
-| Bookmark | Save, Resume, Toggle, Clear |
-| Album Art | Display 1x1, 2x2, 3x3 grid |
-| Device | Transfer playback to device |
-| Queue | Add track to queue |
-| Like | Like/unlike current track |
+## Known limitations
 
-## Variables
+- Spotify ignores `position_ms` when starting playback inside a playlist or album ([web-api#901](https://github.com/spotify/web-api/issues/901)), so bookmark resume briefly plays from 0:00 before seeking. This cannot be fixed in the module.
+- The Web API controls playback but cannot drive the Spotify app's interface, so the app window may show stale state after a context play.
 
-Track info, position, duration, shuffle/repeat state, playlist name, API health, 3 cycling display variants, and more. 32 variables total.
+## Development
 
-## Feedbacks
-
-Playing, paused, shuffle on/off, repeat mode, track match, liked, bookmark exists, API healthy, album art (per grid slot). 13 feedbacks total.
-
-## AppleScript Offline Fallback (macOS only)
-
-After 3 consecutive Web API failures (~6s), the module switches automatically to local AppleScript control. Transport actions continue to work without internet:
-
-| Works offline | Requires internet |
-|---|---|
-| Play / Pause / Toggle | Play by URI |
-| Next / Previous | Play playlist |
-| Seek | Add to queue |
-| Volume | Like / Unlike |
-| Shuffle / Repeat | Bookmark resume |
-
-The module retries the Web API every ~20s and switches back automatically when connectivity returns. Repeat mode in AppleScript is boolean only (on/off) — Track and Context both map to repeat on.
-
-## Known Limitations
-
-- **Bookmark resume blip** — Spotify's Web API ignores `position_ms` on context plays ([web-api#901](https://github.com/spotify/web-api/issues/901)). There is a ~1-2 second blip from 0:00 before the seek lands. This is a Spotify API limitation and cannot be fixed in the module.
-- **Spotify app UI** — the Web API controls playback but cannot navigate the Spotify app's visual interface. The app may show stale state after a context play.
+```
+yarn
+yarn build
+yarn test
+```
 
 ## License
 

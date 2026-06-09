@@ -166,7 +166,7 @@ function getActions() {
 					if (/no active device|device.*not.*found/i.test(e.message)) {
 						try {
 							let pick = await self.ensureActiveDevice()
-							if (!pick) { self.log('error', 'No Spotify devices available — could not launch Spotify'); return }
+							if (!pick) { self.log('error', 'No Spotify devices available - could not launch Spotify'); return }
 							self.log('info', `Retrying on device: ${pick.name}`)
 							await self.spotify.playTrack(track, positionMs, pick.id)
 						} catch (e2) { self.log('error', `Play failed after device handoff: ${e2.message}`) }
@@ -221,11 +221,11 @@ function getActions() {
 				let raw = await self.parseVariablesInString(action.options.context)
 				let context = normaliseContextUri(raw)
 				if (!context || context === 'spotify:playlist:' || context === 'spotify:album:' || context === 'spotify:artist:') {
-					self.log('error', 'Play Playlist: no context URI set — edit the button and paste your playlist/album URI')
+					self.log('error', 'Play Playlist: no context URI set - edit the button and paste your playlist/album URI')
 					return
 				}
 				if (/^spotify:artist:/.test(context)) {
-					self.log('error', 'Play Playlist: artist URIs are not supported by the Spotify API — use a playlist or album URI instead')
+					self.log('error', 'Play Playlist: artist URIs are not supported by the Spotify API - use a playlist or album URI instead')
 					return
 				}
 				let wantShuffle = !!action.options.shuffle
@@ -248,7 +248,7 @@ function getActions() {
 					if (/no active device|device.*not.*found/i.test(e.message)) {
 						try {
 							let pick = await self.ensureActiveDevice()
-							if (!pick) { self.log('error', 'No Spotify devices available — could not launch Spotify'); return }
+							if (!pick) { self.log('error', 'No Spotify devices available - could not launch Spotify'); return }
 							self.log('info', `Retrying on device: ${pick.name}`)
 							await attemptPlay(pick.id)
 						} catch (e2) { self.log('error', `Playlist play failed after device handoff: ${e2.message}`) }
@@ -568,7 +568,7 @@ function getActions() {
 		},
 
 		repeatToggleAll: {
-			name: 'Repeat Toggle (Off → Track → Playlist → Off)',
+			name: 'Repeat Toggle (Off > Track > Playlist > Off)',
 			options: [],
 			callback: async () => {
 				if (self._useAppleScript) {
@@ -587,7 +587,7 @@ function getActions() {
 		},
 
 		repeatToggleOffAll: {
-			name: 'Repeat Toggle (Off ↔ Playlist)',
+			name: 'Repeat Toggle (Off / Playlist)',
 			options: [],
 			callback: async () => {
 				if (self._useAppleScript) {
@@ -604,7 +604,7 @@ function getActions() {
 		},
 
 		repeatToggleOffTrack: {
-			name: 'Repeat Toggle (Off ↔ Track)',
+			name: 'Repeat Toggle (Off / Track)',
 			options: [],
 			callback: async () => {
 				if (self._useAppleScript) {
@@ -858,7 +858,7 @@ function getActions() {
 			callback: async (action) => {
 				let slot = (action.options.slot || 'main').trim()
 				if (!self.state.trackId) {
-					self.log('warn', `Bookmark save ignored — no track playing`)
+					self.log('warn', `Bookmark save ignored - no track playing`)
 					return
 				}
 				if (!self.config.bookmarks) self.config.bookmarks = {}
@@ -924,7 +924,7 @@ function getActions() {
 					if (/no active device|device.*not.*found/i.test(e.message)) {
 						try {
 							let pick = await self.ensureActiveDevice()
-							if (!pick) { self.log('error', 'No Spotify devices available — could not launch Spotify'); return }
+							if (!pick) { self.log('error', 'No Spotify devices available - could not launch Spotify'); return }
 							self.log('info', `Retrying bookmark resume on device: ${pick.name}`)
 							await attempt(pick.id)
 						} catch (e2) { self.log('error', `Bookmark resume failed: ${e2.message}`) }
@@ -983,7 +983,7 @@ function getActions() {
 						delete self.config.bookmarks[slot]
 						self.saveConfig(self.config)
 						self.checkFeedbacks('bookmarkExists')
-						self.log('info', `RESUMED "${slot}" — ready to save again`)
+						self.log('info', `RESUMED "${slot}" - ready to save again`)
 					} catch (e) {
 						self.log('error', `Resume failed: ${e.message}`)
 					}

@@ -458,7 +458,6 @@ function getFeedbacks() {
 				let key = event.options.grid || '1x1'
 				let b64 = cache[key]
 				if (!b64) return {}
-				// Strip data URI prefix if present
 				let raw = b64.replace(/^data:image\/\w+;base64,/, '')
 				return { png64: raw }
 			},

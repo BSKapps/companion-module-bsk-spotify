@@ -88,7 +88,6 @@ class SpotifyInstance extends InstanceBase {
 
 	async applyConfig(config) {
 		if (config.clientId && config.clientSecret) {
-			// Always start OAuth server so /auth and /callback are available
 			this.startOAuthServer(config.clientId, config.clientSecret)
 		}
 		if (config.clientId && config.clientSecret && config.refreshToken) {
@@ -197,7 +196,6 @@ class SpotifyInstance extends InstanceBase {
 		let dev = await this.spotify.getDevices()
 		let list = ((dev && dev.devices) || []).filter((d) => d.id)
 		if (list.length > 0) return list.find((d) => d.is_active) || list[0]
-		// No devices — try launching Spotify and wait
 		this.launchSpotify()
 		await new Promise((r) => setTimeout(r, 3000))
 		dev = await this.spotify.getDevices()
@@ -246,8 +244,6 @@ class SpotifyInstance extends InstanceBase {
 	}
 
 	tick() {
-		// Local interpolation between polls — bumps positionMs and updates variables
-		// without hitting the API. Capped at durationMs.
 		if (this.state.playerState !== 'Playing') return
 		if (!this.state.durationMs) return
 		let elapsed = Date.now() - this._lastPollAt
@@ -270,7 +266,6 @@ class SpotifyInstance extends InstanceBase {
 					await this.appleScriptPoll()
 					return
 				}
-				// Every 10th poll (~20s): fall through to try API recovery
 			}
 			let data = await this.spotify.getPlaybackState()
 			if (!data || !data.item) {
@@ -289,7 +284,6 @@ class SpotifyInstance extends InstanceBase {
 				this.state.playerState = data.is_playing ? 'Playing' : 'Paused'
 				this.state.trackId = data.item.uri || ''
 				this.state.trackName = data.item.name || ''
-				// Episodes have show name instead of artists/album
 				this.state.artistName = isEpisode
 					? (data.item.show && data.item.show.name) || ''
 					: (data.item.artists || []).map((a) => a.name).join(', ')
@@ -354,7 +348,6 @@ class SpotifyInstance extends InstanceBase {
 				this._lastTrackId = this.state.trackId
 			}
 
-			// Fetch queue immediately on track change, otherwise every 5th poll (~10s)
 			if ((trackChanged || this._pollCount % 5 === 0) && this.state.trackId) {
 				let trackId = this.state.trackId.replace('spotify:track:', '')
 				this.spotify.checkTrackSaved(trackId).then((liked) => {
@@ -383,7 +376,6 @@ class SpotifyInstance extends InstanceBase {
 				}).catch(() => {})
 			}
 
-			// Healthy poll
 			this._consecutivePollErrors = 0
 			if (this._useAppleScript) {
 				this._useAppleScript = false
@@ -398,7 +390,6 @@ class SpotifyInstance extends InstanceBase {
 		} catch (e) {
 			this._consecutivePollErrors++
 			this.log('warn', `Poll error: ${e.message}`)
-			// Mark unhealthy after 3 consecutive failures (~6s)
 			if (this._consecutivePollErrors >= 3 && this._apiHealthy) {
 				this._apiHealthy = false
 				if (process.platform === 'darwin') {

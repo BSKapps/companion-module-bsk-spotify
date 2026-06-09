@@ -152,7 +152,6 @@ class SpotifyClient {
 	}
 
 	async setRepeat(state) {
-		// state: 'track', 'context', 'off'
 		return this._apiPut(`/v1/me/player/repeat?state=${state}`, {})
 	}
 

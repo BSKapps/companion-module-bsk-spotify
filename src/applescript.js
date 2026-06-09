@@ -20,8 +20,6 @@ function runScript(script) {
 
 class AppleScriptSpotify {
 	async pollState() {
-		// Returns 9 pipe-delimited fields:
-		// playerState|positionSecs|volume|shuffling|repeating|trackName|artistName|albumName|durationSecs
 		let script = [
 			'if application "Spotify" is not running then',
 			'\treturn "stopped|0|50|false|false||||0"',
@@ -56,7 +54,6 @@ class AppleScriptSpotify {
 			trackName: p[5] || '',
 			artistName: p[6] || '',
 			albumName: p[7] || '',
-			// duration is normally seconds, but some Spotify versions return ms — guard by threshold
 			durationMs: (() => { let d = parseFloat(p[8]) || 0; return Math.round(d > 3600 ? d : d * 1000) })(),
 		}
 	}
@@ -105,7 +102,6 @@ class AppleScriptSpotify {
 		await runScript(`tell application "Spotify" to set shuffling to ${state ? 'true' : 'false'}`)
 	}
 
-	// AppleScript only has a boolean repeating property — 'track' and 'context' both map to true
 	async setRepeat(state) {
 		await runScript(`tell application "Spotify" to set repeating to ${state !== 'off' ? 'true' : 'false'}`)
 	}

@@ -3,14 +3,12 @@ const { updateVariables } = require('./variables')
 function parsePositionToMs(str) {
 	let parts = (str || '').trim().split(':')
 	if (parts.length === 3) {
-		// M:SS:ms  e.g. 1:23:456 = 1 min 23 sec 456ms
 		let minutes = parseInt(parts[0], 10) || 0
 		let seconds = parseInt(parts[1], 10) || 0
 		let ms = parseInt(parts[2], 10) || 0
 		return minutes * 60000 + seconds * 1000 + ms
 	}
 	if (parts.length === 2) {
-		// M:SS  e.g. 1:23 or 1:23.5
 		let minutes = parseInt(parts[0], 10) || 0
 		let seconds = parseFloat(parts[1]) || 0
 		return Math.round((minutes * 60 + seconds) * 1000)
@@ -231,7 +229,6 @@ function getActions() {
 					return
 				}
 				let wantShuffle = !!action.options.shuffle
-				// Don't send offset when shuffle is on — let Spotify pick randomly
 				let offsetIndex = wantShuffle ? undefined : Math.max(0, (parseInt(action.options.offset, 10) || 1) - 1)
 				let positionRaw = (action.options.position || '').trim()
 				let positionMs = positionRaw !== '' ? parsePositionToMs(positionRaw) : undefined
@@ -240,7 +237,6 @@ function getActions() {
 
 				let attemptPlay = async (deviceId) => {
 					await self.spotify.playContext(context, offsetIndex, positionMs, deviceId)
-					// Context play resets shuffle and repeat — re-issue both after play
 					try { await self.spotify.setShuffle(wantShuffle, deviceId) } catch (e) {}
 					let currentRepeat = self.state.repeatMode || 'off'
 					try { await self.spotify.setRepeat(currentRepeat) } catch (e) {}
@@ -576,7 +572,6 @@ function getActions() {
 			options: [],
 			callback: async () => {
 				if (self._useAppleScript) {
-					// AppleScript repeat is boolean only - toggle between off and on
 					try { await self._as.setRepeat(self.state.repeatMode === 'off' ? 'context' : 'off') } catch (e) { self.log('error', `Repeat toggle failed: ${e.message}`) }
 					return
 				}
@@ -905,23 +900,19 @@ function getActions() {
 
 				self.log('info', `Bookmark resume "${slot}": ${bm.trackName || bm.trackUri} @ ${Math.round((bm.positionMs || 0) / 1000)}s context=${bm.contextUri || 'none'}`)
 
-				// Only use context play for playlist/album — artist and show contexts don't support track offsets
 				let contextSupported = bm.contextUri && /^spotify:(playlist|album):/.test(bm.contextUri)
 
 				let attempt = async (deviceId) => {
 					if (contextSupported) {
 						self.log('info', `Bookmark: playing context ${bm.contextUri} at track ${bm.trackUri} @ ${bm.positionMs}ms`)
 						await self.spotify.playContextAtTrackUri(bm.contextUri, bm.trackUri, 0, deviceId)
-						// Re-issue shuffle/repeat — context play resets both
 						try { await self.spotify.setShuffle(self.state.isShuffling, deviceId) } catch (e) {}
 						try { await self.spotify.setRepeat(self.state.repeatMode || 'off') } catch (e) {}
-						// Spotify ignores position_ms on context plays — must seek after track loads (1s delay)
 						if (bm.positionMs > 0) {
 							await new Promise((r) => setTimeout(r, 1000))
 							await self.spotify.seekTo(bm.positionMs)
 						}
 					} else {
-						// Artist radio, show, or no context — play track directly
 						self.log('info', `Bookmark: playing track directly at ${bm.positionMs}ms`)
 						await self.spotify.playTrack(bm.trackUri, bm.positionMs, deviceId)
 					}
@@ -962,7 +953,6 @@ function getActions() {
 				let bm = self.config.bookmarks[slot]
 
 				if (!bm || !bm.trackUri) {
-					// No bookmark saved → save current position
 					self.config.bookmarks[slot] = {
 						trackUri: self.state.trackId || '',
 						contextUri: self.state.contextUri || '',
@@ -973,7 +963,6 @@ function getActions() {
 					self.checkFeedbacks('bookmarkExists')
 					self.log('info', `SAVED "${slot}": ${self.state.trackName} @ ${Math.floor((self.state.positionMs || 0) / 1000)}s`)
 				} else {
-					// Bookmark exists → resume it, then clear so next press saves again
 					if (self._useAppleScript) {
 						self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
 						return

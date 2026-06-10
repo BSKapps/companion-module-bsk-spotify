@@ -254,29 +254,31 @@ class SpotifyInstance extends InstanceBase {
 		try {
 			let s = await this._as.pollState()
 			this.state.playerState = s.playerState
-			this.state.trackName = s.trackName
-			this.state.artistName = s.artistName
-			this.state.albumName = s.albumName
-			this.state.positionMs = s.positionMs
-			this.state.durationMs = s.durationMs
 			this.state.volume = s.volume
 			this.state.isShuffling = s.isShuffling
 			this.state.isRepeating = s.isRepeating
 			this.state.repeatMode = s.isRepeating ? 'context' : 'off'
-			if (s.trackId !== this.state.trackId) {
-				this.state.trackId = s.trackId
-				this._lastTrackId = s.trackId
-				this.state.contextUri = ''
-				this.state.contextType = ''
-				this.state.playlistName = ''
-				this.state.albumArtUrl = ''
-				this.state.nextTrackName = ''
-				this.state.nextTrackArtist = ''
-				this.state.nextTrackId = ''
-				this.checkFeedbacks('albumArt')
+			if (s.playerState !== 'Stopped') {
+				this.state.trackName = s.trackName
+				this.state.artistName = s.artistName
+				this.state.albumName = s.albumName
+				this.state.positionMs = s.positionMs
+				this.state.durationMs = s.durationMs
+				if (s.trackId && s.trackId !== this.state.trackId) {
+					this.state.trackId = s.trackId
+					this._lastTrackId = s.trackId
+					this.state.contextUri = ''
+					this.state.contextType = ''
+					this.state.playlistName = ''
+					this.state.albumArtUrl = ''
+					this.state.nextTrackName = ''
+					this.state.nextTrackArtist = ''
+					this.state.nextTrackId = ''
+					this.checkFeedbacks('albumArt')
+				}
+				this._lastPolledPositionMs = s.positionMs
 			}
 			this._lastPollAt = Date.now()
-			this._lastPolledPositionMs = s.positionMs
 			updateVariables.call(this)
 			this.checkFeedbacks()
 		} catch (e) {
@@ -332,26 +334,9 @@ class SpotifyInstance extends InstanceBase {
 			let data = await this.spotify.getPlaybackState()
 			if (!data || !data.item) {
 				this.state.playerState = 'Stopped'
-				this.state.trackId = ''
-				this.state.trackName = ''
-				this.state.artistName = ''
-				this.state.albumName = ''
-				this.state.positionMs = 0
-				this.state.durationMs = 0
 				this.state.deviceId = ''
 				this.state.deviceName = ''
 				this.state.deviceType = ''
-				this.state.albumArtUrl = ''
-				this.state.contextUri = ''
-				this.state.contextType = ''
-				this.state.playlistName = ''
-				this.state.nextTrackName = ''
-				this.state.nextTrackArtist = ''
-				this.state.nextTrackId = ''
-				this.state.isLiked = false
-				this.state.isShuffling = false
-				this.state.repeatMode = 'off'
-				this.state.isRepeating = false
 			} else {
 				let isEpisode = data.currently_playing_type === 'episode'
 				this.state.playerState = data.is_playing ? 'Playing' : 'Paused'

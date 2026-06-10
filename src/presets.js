@@ -693,7 +693,7 @@ function getPresets() {
 		btn({
 			category: 'Health',
 			name: 'Status Indicator (OK / Idle / Err)',
-			style: { text: 'OK', size: '18', color: white, bgcolor: darkGreen },
+			style: { text: 'API\\nOK', size: '18', color: white, bgcolor: darkGreen },
 			steps: [{ down: [], up: [] }],
 			feedbacks: [
 				{ feedbackId: 'hasActiveDevice', options: {}, isInverted: true, style: { text: 'IDLE', color: white, bgcolor: combineRgb(0, 0, 153) } },

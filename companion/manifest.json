@@ -3,7 +3,7 @@
 	"name": "BSK Apps: Spotify Control",
 	"shortname": "Spotify Control",
 	"description": "Spotify playback control with cue points, bookmarks, volume fades, and album art. Requires Spotify Premium and a Spotify Developer app.",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"license": "MIT",
 	"repository": "https://github.com/BSKapps/companion-module-bsk-spotify",
 	"bugs": "https://github.com/BSKapps/companion-module-bsk-spotify/issues",

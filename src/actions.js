@@ -278,7 +278,7 @@ function getActions() {
 					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Seek failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.seekTo(positionMs)
+				try { await self.spotify.seekTo(positionMs) } catch (e) { self.log('error', `Seek failed: ${e.message}`) }
 			},
 		},
 
@@ -305,7 +305,7 @@ function getActions() {
 					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Skip forward failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.seekTo(positionMs)
+				try { await self.spotify.seekTo(positionMs) } catch (e) { self.log('error', `Skip forward failed: ${e.message}`) }
 			},
 		},
 
@@ -330,7 +330,7 @@ function getActions() {
 					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Skip back failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.seekTo(positionMs)
+				try { await self.spotify.seekTo(positionMs) } catch (e) { self.log('error', `Skip back failed: ${e.message}`) }
 			},
 		},
 
@@ -355,7 +355,7 @@ function getActions() {
 					try { await self._as.seekTo(positionMs) } catch (e) { self.log('error', `Move position failed: ${e.message}`) }
 					return
 				}
-				await self.spotify.seekTo(positionMs)
+				try { await self.spotify.seekTo(positionMs) } catch (e) { self.log('error', `Move position failed: ${e.message}`) }
 			},
 		},
 
@@ -382,7 +382,7 @@ function getActions() {
 					updateVariables.call(self)
 					return
 				}
-				await self.spotify.setVolume(action.options.volume)
+				try { await self.spotify.setVolume(action.options.volume) } catch (e) { self.log('error', `Set volume failed: ${e.message}`) }
 				self.state.volume = action.options.volume
 				self._volumeSetAt = Date.now()
 				updateVariables.call(self)
@@ -397,7 +397,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(0) } catch (e) {}
 				} else {
-					await self.spotify.setVolume(0)
+					try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 				}
 				self.state.volume = 0
 				updateVariables.call(self)
@@ -412,7 +412,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(restore) } catch (e) {}
 				} else {
-					await self.spotify.setVolume(restore)
+					try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 				}
 				self.state.volume = restore
 				updateVariables.call(self)
@@ -428,7 +428,7 @@ function getActions() {
 					if (self._useAppleScript) {
 						try { await self._as.setVolume(restore) } catch (e) {}
 					} else {
-						await self.spotify.setVolume(restore)
+						try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 					}
 					self.state.volume = restore
 				} else {
@@ -436,7 +436,7 @@ function getActions() {
 					if (self._useAppleScript) {
 						try { await self._as.setVolume(0) } catch (e) {}
 					} else {
-						await self.spotify.setVolume(0)
+						try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 					}
 					self.state.volume = 0
 				}
@@ -465,7 +465,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(v) } catch (e) {}
 				} else {
-					await self.spotify.setVolume(v)
+					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume up failed: ${e.message}`) }
 				}
 			},
 		},
@@ -492,7 +492,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(v) } catch (e) {}
 				} else {
-					await self.spotify.setVolume(v)
+					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume down failed: ${e.message}`) }
 				}
 			},
 		},
@@ -649,12 +649,12 @@ function getActions() {
 				let target = action.options.target
 				let duration = action.options.duration * 1000
 				let start = self.state.volume || 0
-				let steps = Math.max(1, Math.round(duration / 100))
+				let steps = Math.max(1, Math.round(duration / 250))
 				let stepMs = duration / steps
 				let stepVol = (target - start) / steps
 				if (self._fadeTimer) clearInterval(self._fadeTimer)
 				let current = 0
-				self._fadeTimer = setInterval(async () => {
+				let timer = setInterval(async () => {
 					current++
 					let vol = Math.round(Math.min(100, Math.max(0, start + stepVol * current)))
 					try {
@@ -666,10 +666,11 @@ function getActions() {
 						self.state.volume = vol
 					} catch (e) {}
 					if (current >= steps) {
-						clearInterval(self._fadeTimer)
-						self._fadeTimer = null
+						clearInterval(timer)
+						if (self._fadeTimer === timer) self._fadeTimer = null
 					}
 				}, stepMs)
+				self._fadeTimer = timer
 			},
 		},
 
@@ -734,7 +735,7 @@ function getActions() {
 				let stepVol = target / steps
 				if (self._fadeTimer) clearInterval(self._fadeTimer)
 				let current = 0
-				self._fadeTimer = setInterval(async () => {
+				let timer = setInterval(async () => {
 					current++
 					let vol = Math.round(Math.min(target, Math.max(0, stepVol * current)))
 					try {
@@ -747,10 +748,11 @@ function getActions() {
 						updateVariables.call(self)
 					} catch (e) {}
 					if (current >= steps) {
-						clearInterval(self._fadeTimer)
-						self._fadeTimer = null
+						clearInterval(timer)
+						if (self._fadeTimer === timer) self._fadeTimer = null
 					}
 				}, stepMs)
+				self._fadeTimer = timer
 			},
 		},
 
@@ -953,6 +955,10 @@ function getActions() {
 				let bm = self.config.bookmarks[slot]
 
 				if (!bm || !bm.trackUri) {
+					if (!self.state.trackId) {
+						self.log('warn', `Bookmark save ignored - no track playing`)
+						return
+					}
 					self.config.bookmarks[slot] = {
 						trackUri: self.state.trackId || '',
 						contextUri: self.state.contextUri || '',

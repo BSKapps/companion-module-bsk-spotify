@@ -5,14 +5,18 @@ function runScript(script) {
 		let proc = spawn('osascript', [])
 		let out = ''
 		let err = ''
+		let killTimer = setTimeout(() => proc.kill(), 5000)
 		proc.stdout.on('data', d => { out += d })
 		proc.stderr.on('data', d => { err += d })
-		proc.on('error', reject)
+		proc.on('error', (e) => {
+			clearTimeout(killTimer)
+			reject(e)
+		})
 		proc.on('close', code => {
+			clearTimeout(killTimer)
 			if (code !== 0) reject(new Error(err.trim() || `osascript exited ${code}`))
 			else resolve(out.trim())
 		})
-		setTimeout(() => proc.kill(), 5000)
 		proc.stdin.write(script)
 		proc.stdin.end()
 	})

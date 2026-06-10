@@ -64,7 +64,7 @@ class AppleScriptSpotify {
 			artistName: p[6] || '',
 			albumName: p[7] || '',
 			durationMs: (() => { let d = parseFloat(p[8]) || 0; return Math.round(d > 3600 ? d : d * 1000) })(),
-			trackId: p[9] || '',
+			trackId: /^spotify:/.test(p[9] || '') ? p[9] : '',
 		}
 	}
 

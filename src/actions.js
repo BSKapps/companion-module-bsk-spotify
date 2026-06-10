@@ -665,6 +665,10 @@ function getActions() {
 				let current = 0
 				let busy = false
 				let timer = setInterval(async () => {
+					if (self._fadeTimer !== timer) {
+						clearInterval(timer)
+						return
+					}
 					if (busy) return
 					busy = true
 					current++
@@ -675,13 +679,16 @@ function getActions() {
 						} else {
 							await self.spotify.setVolume(vol)
 						}
-						self.state.volume = vol
-						self._volumeSetAt = Date.now()
+						if (self._fadeTimer === timer) {
+							self.state.volume = vol
+							self._volumeSetAt = Date.now()
+						}
 					} catch (e) {}
 					busy = false
 					if (current >= steps) {
 						clearInterval(timer)
-						if (self._fadeTimer === timer) self._fadeTimer = null
+						if (self._fadeTimer !== timer) return
+						self._fadeTimer = null
 						try {
 							if (self._useAppleScript) {
 								await self._as.setVolume(target)
@@ -774,9 +781,17 @@ function getActions() {
 				let steps = Math.max(1, Math.round(duration / 250))
 				let stepMs = duration / steps
 				let stepVol = target / steps
+				if (self._fadeTimer) {
+					clearInterval(self._fadeTimer)
+					self._fadeTimer = null
+				}
 				let current = 0
 				let busy = false
 				let timer = setInterval(async () => {
+					if (self._fadeTimer !== timer) {
+						clearInterval(timer)
+						return
+					}
 					if (busy) return
 					busy = true
 					current++
@@ -787,14 +802,17 @@ function getActions() {
 						} else {
 							await self.spotify.setVolume(vol)
 						}
-						self.state.volume = vol
-						self._volumeSetAt = Date.now()
-						updateVariables.call(self)
+						if (self._fadeTimer === timer) {
+							self.state.volume = vol
+							self._volumeSetAt = Date.now()
+							updateVariables.call(self)
+						}
 					} catch (e) {}
 					busy = false
 					if (current >= steps) {
 						clearInterval(timer)
-						if (self._fadeTimer === timer) self._fadeTimer = null
+						if (self._fadeTimer !== timer) return
+						self._fadeTimer = null
 						try {
 							if (self._useAppleScript) {
 								await self._as.setVolume(target)
@@ -971,7 +989,7 @@ function getActions() {
 					self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
 					return
 				}
-				let slot = (action.options.slot || 'main').trim()
+				let slot = (action.options.slot || 'main').trim() || 'main'
 				let bm = self.config.bookmarks && self.config.bookmarks[slot]
 				if (!bm || !bm.trackUri) {
 					self.log('warn', `Bookmark resume: no bookmark saved for "${slot}"`)

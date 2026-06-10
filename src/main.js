@@ -457,11 +457,6 @@ class SpotifyInstance extends InstanceBase {
 
 			this._consecutivePollErrors = 0
 			this._lastApiSuccessAt = Date.now()
-			if (this._useAppleScript) {
-				this._useAppleScript = false
-				this._asPollCount = 0
-				this.log('info', 'Internet connectivity restored - switched back to Spotify Web API')
-			}
 			if (!this._apiHealthy || !this._statusOk) {
 				this._apiHealthy = true
 				this._statusOk = true

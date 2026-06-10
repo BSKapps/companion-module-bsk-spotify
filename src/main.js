@@ -1,6 +1,7 @@
 const { InstanceBase, runEntrypoint, InstanceStatus } = require('@companion-module/base')
 const http = require('http')
 const https = require('https')
+const crypto = require('crypto')
 const { exec } = require('child_process')
 const { getActions } = require('./actions')
 const { getFeedbacks } = require('./feedbacks')
@@ -63,6 +64,10 @@ class SpotifyInstance extends InstanceBase {
 		this._useAppleScript = false
 		this._asPollCount = 0
 		this._as = new AppleScriptSpotify()
+		this._statusOk = false
+		this._probeInFlight = false
+		this._lastApiSuccessAt = 0
+		this._destroyed = false
 	}
 
 	async init(config) {
@@ -79,28 +84,48 @@ class SpotifyInstance extends InstanceBase {
 	async configUpdated(config) {
 		this.config = config
 		this.stopPolling()
+		if (this._fadeTimer) {
+			clearInterval(this._fadeTimer)
+			this._fadeTimer = null
+		}
 		this._consecutivePollErrors = 0
 		this._apiHealthy = true
+		this._statusOk = false
 		this._useAppleScript = false
 		this._asPollCount = 0
 		await this.applyConfig(config)
 	}
 
-	async applyConfig(config) {
-		if (config.clientId && config.clientSecret) {
-			this.startOAuthServer(config.clientId, config.clientSecret)
+	_wireRefreshTokenPersistence() {
+		this.spotify.onRefreshTokenChanged = (token) => {
+			this.config.refreshToken = token
+			this.saveConfig(this.config)
+			this.log('info', 'Spotify rotated the refresh token - saved the new one')
 		}
-		if (config.clientId && config.clientSecret && config.refreshToken) {
-			this.spotify = new SpotifyClient(config.clientId, config.clientSecret, config.refreshToken, REDIRECT_URI)
+	}
+
+	async applyConfig(config) {
+		let clientId = (config.clientId || '').trim()
+		let clientSecret = (config.clientSecret || '').trim()
+		let refreshToken = (config.refreshToken || '').trim()
+		if (clientId && clientSecret) {
+			this.startOAuthServer(clientId, clientSecret)
+		}
+		if (clientId && clientSecret && refreshToken) {
+			this.spotify = new SpotifyClient(clientId, clientSecret, refreshToken, REDIRECT_URI)
+			this._wireRefreshTokenPersistence()
 			try {
 				await this.spotify.refreshAccessToken()
 				this.updateStatus(InstanceStatus.Ok)
+				this._statusOk = true
 				this.startPolling()
 			} catch (e) {
 				this.log('error', `Auth failed: ${e.message}`)
-				this.updateStatus(InstanceStatus.ConnectionFailure, 'Authentication failed - check credentials or re-authenticate')
+				this.updateStatus(InstanceStatus.ConnectionFailure, 'Authentication failed - check credentials, network, or re-authenticate')
+				this._statusOk = false
+				this.startPolling()
 			}
-		} else if (config.clientId && config.clientSecret) {
+		} else if (clientId && clientSecret) {
 			this.updateStatus(InstanceStatus.BadConfig, 'Open http://127.0.0.1:4115/auth in your browser to authenticate')
 		} else {
 			this.updateStatus(InstanceStatus.BadConfig, 'Enter Client ID and Client Secret')
@@ -112,7 +137,7 @@ class SpotifyInstance extends InstanceBase {
 			try { this.oauthServer.close() } catch (e) {}
 		}
 		let self = this
-		let state = Math.random().toString(36).substring(2)
+		let state = crypto.randomBytes(16).toString('hex')
 		this._oauthState = state
 
 		let scopes = [
@@ -148,9 +173,9 @@ class SpotifyInstance extends InstanceBase {
 			let error = url.searchParams.get('error')
 
 			if (error || returnedState !== self._oauthState) {
-				res.writeHead(400)
-				res.end(`<html><body style="font-family:sans-serif;padding:40px"><h2>Auth failed</h2><p>${error || 'State mismatch'}</p></body></html>`)
-				try { self.oauthServer.close() } catch (e) {}
+				self.log('warn', `OAuth callback rejected: ${error || 'state mismatch'}`)
+				res.writeHead(400, { 'Content-Type': 'text/html' })
+				res.end('<html><body style="font-family:sans-serif;padding:40px"><h2>Auth failed</h2><p>Open the auth link from the Companion connection settings and try again.</p></body></html>')
 				return
 			}
 
@@ -159,16 +184,19 @@ class SpotifyInstance extends InstanceBase {
 				self.config.refreshToken = tokens.refresh_token
 				self.saveConfig(self.config)
 				self.spotify = new SpotifyClient(clientId, clientSecret, tokens.refresh_token, REDIRECT_URI)
+				self._wireRefreshTokenPersistence()
 				self.spotify.setAccessToken(tokens.access_token)
 				self.updateStatus(InstanceStatus.Ok)
+				self._statusOk = true
 				self.startPolling()
 				res.writeHead(200, { 'Content-Type': 'text/html' })
 				res.end('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Authenticated!</h2><p>You can close this window and return to Companion.</p></body></html>')
+				try { self.oauthServer.close() } catch (e) {}
 			} catch (e) {
-				res.writeHead(500)
-				res.end(`<html><body style="font-family:sans-serif;padding:40px"><h2>Token exchange failed</h2><p>${e.message}</p></body></html>`)
+				self.log('error', `Token exchange failed: ${e.message}`)
+				res.writeHead(500, { 'Content-Type': 'text/html' })
+				res.end('<html><body style="font-family:sans-serif;padding:40px"><h2>Token exchange failed</h2><p>Check the Companion log, then open the auth link and try again.</p></body></html>')
 			}
-			try { self.oauthServer.close() } catch (e) {}
 		})
 
 		this.oauthServer.on('error', (e) => {
@@ -205,6 +233,7 @@ class SpotifyInstance extends InstanceBase {
 
 	startPolling() {
 		this.stopPolling()
+		this._lastApiSuccessAt = Date.now()
 		this.poll()
 		this.pollTimer = setInterval(() => this.poll(), POLL_INTERVAL_MS)
 		this._tickTimer = setInterval(() => this.tick(), TICK_INTERVAL_MS)
@@ -234,6 +263,18 @@ class SpotifyInstance extends InstanceBase {
 			this.state.isShuffling = s.isShuffling
 			this.state.isRepeating = s.isRepeating
 			this.state.repeatMode = s.isRepeating ? 'context' : 'off'
+			if (s.trackId !== this.state.trackId) {
+				this.state.trackId = s.trackId
+				this._lastTrackId = s.trackId
+				this.state.contextUri = ''
+				this.state.contextType = ''
+				this.state.playlistName = ''
+				this.state.albumArtUrl = ''
+				this.state.nextTrackName = ''
+				this.state.nextTrackArtist = ''
+				this.state.nextTrackId = ''
+				this.checkFeedbacks('albumArt')
+			}
 			this._lastPollAt = Date.now()
 			this._lastPolledPositionMs = s.positionMs
 			updateVariables.call(this)
@@ -241,6 +282,26 @@ class SpotifyInstance extends InstanceBase {
 		} catch (e) {
 			this.log('warn', `AppleScript poll error: ${e.message}`)
 		}
+	}
+
+	probeApiRecovery() {
+		if (this._probeInFlight) return
+		this._probeInFlight = true
+		this.spotify.getPlaybackState().then(() => {
+			this._useAppleScript = false
+			this._asPollCount = 0
+			this._consecutivePollErrors = 0
+			this._lastApiSuccessAt = Date.now()
+			this.log('info', 'Internet connectivity restored - switched back to Spotify Web API')
+			if (!this._apiHealthy || !this._statusOk) {
+				this._apiHealthy = true
+				this._statusOk = true
+				this.updateStatus(InstanceStatus.Ok)
+				this.checkFeedbacks('apiHealthy')
+			}
+		}).catch(() => {}).finally(() => {
+			this._probeInFlight = false
+		})
 	}
 
 	tick() {
@@ -252,20 +313,21 @@ class SpotifyInstance extends InstanceBase {
 		if (estimated >= this.state.durationMs) estimated = this.state.durationMs
 		this.state.positionMs = estimated
 		updateVariables.call(this)
-		this.checkFeedbacks('nearEnd')
+		this.checkFeedbacks('nearEnd', 'positionPast', 'positionBefore', 'progressBar')
 	}
 
 	async poll() {
-		if (!this.spotify) return
+		if (this._destroyed || !this.spotify) return
 		if (this._isPolling) return
 		this._isPolling = true
 		try {
 			if (this._useAppleScript) {
 				this._asPollCount++
-				if (this._asPollCount % 10 !== 0) {
-					await this.appleScriptPoll()
-					return
+				if (this._asPollCount % 10 === 0) {
+					this.probeApiRecovery()
 				}
+				await this.appleScriptPoll()
+				return
 			}
 			let data = await this.spotify.getPlaybackState()
 			if (!data || !data.item) {
@@ -279,6 +341,17 @@ class SpotifyInstance extends InstanceBase {
 				this.state.deviceId = ''
 				this.state.deviceName = ''
 				this.state.deviceType = ''
+				this.state.albumArtUrl = ''
+				this.state.contextUri = ''
+				this.state.contextType = ''
+				this.state.playlistName = ''
+				this.state.nextTrackName = ''
+				this.state.nextTrackArtist = ''
+				this.state.nextTrackId = ''
+				this.state.isLiked = false
+				this.state.isShuffling = false
+				this.state.repeatMode = 'off'
+				this.state.isRepeating = false
 			} else {
 				let isEpisode = data.currently_playing_type === 'episode'
 				this.state.playerState = data.is_playing ? 'Playing' : 'Paused'
@@ -307,7 +380,7 @@ class SpotifyInstance extends InstanceBase {
 				this.state.positionMs = data.progress_ms || 0
 				this.state.durationMs = data.item.duration_ms || 0
 				if (!this._volumeSetAt || Date.now() - this._volumeSetAt > 2000) {
-					this.state.volume = data.device ? data.device.volume_percent : this.state.volume
+					this.state.volume = data.device && data.device.volume_percent != null ? data.device.volume_percent : this.state.volume
 				}
 				this.state.deviceName = data.device ? data.device.name : ''
 				this.state.deviceType = data.device ? data.device.type : ''
@@ -349,14 +422,20 @@ class SpotifyInstance extends InstanceBase {
 			}
 
 			if ((trackChanged || this._pollCount % 5 === 0) && this.state.trackId) {
-				let trackId = this.state.trackId.replace('spotify:track:', '')
-				this.spotify.checkTrackSaved(trackId).then((liked) => {
-					if (this.state.isLiked !== liked) {
-						this.state.isLiked = liked
-						updateVariables.call(this)
-						this.checkFeedbacks('trackLiked')
-					}
-				}).catch(() => {})
+				if (this.state.trackId.startsWith('spotify:track:')) {
+					let trackId = this.state.trackId.replace('spotify:track:', '')
+					this.spotify.checkTrackSaved(trackId).then((liked) => {
+						if (this.state.isLiked !== liked) {
+							this.state.isLiked = liked
+							updateVariables.call(this)
+							this.checkFeedbacks('trackLiked')
+						}
+					}).catch(() => {})
+				} else if (this.state.isLiked) {
+					this.state.isLiked = false
+					updateVariables.call(this)
+					this.checkFeedbacks('trackLiked')
+				}
 
 				this.spotify.getQueue().then((q) => {
 					let next = q && q.queue && q.queue[0]
@@ -377,21 +456,25 @@ class SpotifyInstance extends InstanceBase {
 			}
 
 			this._consecutivePollErrors = 0
+			this._lastApiSuccessAt = Date.now()
 			if (this._useAppleScript) {
 				this._useAppleScript = false
 				this._asPollCount = 0
 				this.log('info', 'Internet connectivity restored - switched back to Spotify Web API')
 			}
-			if (!this._apiHealthy) {
+			if (!this._apiHealthy || !this._statusOk) {
 				this._apiHealthy = true
+				this._statusOk = true
 				this.updateStatus(InstanceStatus.Ok)
 				this.checkFeedbacks('apiHealthy')
 			}
 		} catch (e) {
 			this._consecutivePollErrors++
 			this.log('warn', `Poll error: ${e.message}`)
-			if (this._consecutivePollErrors >= 3 && this._apiHealthy) {
+			let offlineTooLong = this._lastApiSuccessAt > 0 && Date.now() - this._lastApiSuccessAt > 15000
+			if ((this._consecutivePollErrors >= 3 || offlineTooLong) && this._apiHealthy) {
 				this._apiHealthy = false
+				this._statusOk = false
 				if (process.platform === 'darwin') {
 					this._useAppleScript = true
 					this._asPollCount = 0
@@ -477,6 +560,7 @@ class SpotifyInstance extends InstanceBase {
 	}
 
 	async destroy() {
+		this._destroyed = true
 		this.stopPolling()
 		if (this._fadeTimer) {
 			clearInterval(this._fadeTimer)

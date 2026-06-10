@@ -17,6 +17,7 @@ function runScript(script) {
 			if (code !== 0) reject(new Error(err.trim() || `osascript exited ${code}`))
 			else resolve(out.trim())
 		})
+		proc.stdin.on('error', () => {})
 		proc.stdin.write(script)
 		proc.stdin.end()
 	})
@@ -26,7 +27,7 @@ class AppleScriptSpotify {
 	async pollState() {
 		let script = [
 			'if application "Spotify" is not running then',
-			'\treturn "stopped|0|50|false|false||||0"',
+			'\treturn "stopped|0|50|false|false||||0|"',
 			'end if',
 			'tell application "Spotify"',
 			'\tset ps to player state as string',
@@ -34,7 +35,7 @@ class AppleScriptSpotify {
 			'\tset sh to shuffling as string',
 			'\tset rp to repeating as string',
 			'\tif ps is "stopped" then',
-			'\t\treturn "stopped|0|" & sv & "|" & sh & "|" & rp & "||||0"',
+			'\t\treturn "stopped|0|" & sv & "|" & sh & "|" & rp & "||||0|"',
 			'\tend if',
 			'\tset pp to player position as real',
 			'\tset ct to current track',
@@ -42,7 +43,11 @@ class AppleScriptSpotify {
 			'\tset ta to artist of ct',
 			'\tset tal to album of ct',
 			'\tset td to duration of ct as real',
-			'\treturn ps & "|" & pp & "|" & sv & "|" & sh & "|" & rp & "|" & tn & "|" & ta & "|" & tal & "|" & td',
+			'\tset tid to ""',
+			'\ttry',
+			'\t\tset tid to id of ct as string',
+			'\tend try',
+			'\treturn ps & "|" & pp & "|" & sv & "|" & sh & "|" & rp & "|" & tn & "|" & ta & "|" & tal & "|" & td & "|" & tid',
 			'end tell',
 		].join('\n')
 
@@ -59,6 +64,7 @@ class AppleScriptSpotify {
 			artistName: p[6] || '',
 			albumName: p[7] || '',
 			durationMs: (() => { let d = parseFloat(p[8]) || 0; return Math.round(d > 3600 ? d : d * 1000) })(),
+			trackId: p[9] || '',
 		}
 	}
 

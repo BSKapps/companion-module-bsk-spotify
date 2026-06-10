@@ -1,19 +1,24 @@
 const { updateVariables } = require('./variables')
 
+function clampMs(ms) {
+	if (!Number.isFinite(ms) || ms < 0) return 0
+	return ms
+}
+
 function parsePositionToMs(str) {
 	let parts = (str || '').trim().split(':')
 	if (parts.length === 3) {
 		let minutes = parseInt(parts[0], 10) || 0
 		let seconds = parseInt(parts[1], 10) || 0
 		let ms = parseInt(parts[2], 10) || 0
-		return minutes * 60000 + seconds * 1000 + ms
+		return clampMs(minutes * 60000 + seconds * 1000 + ms)
 	}
 	if (parts.length === 2) {
 		let minutes = parseInt(parts[0], 10) || 0
 		let seconds = parseFloat(parts[1]) || 0
-		return Math.round((minutes * 60 + seconds) * 1000)
+		return clampMs(Math.round((minutes * 60 + seconds) * 1000))
 	}
-	return Math.round((parseFloat(str) || 0) * 1000)
+	return clampMs(Math.round((parseFloat(str) || 0) * 1000))
 }
 
 function normaliseTrackUri(input) {
@@ -158,6 +163,10 @@ function getActions() {
 				}
 				let raw = await self.parseVariablesInString(action.options.track)
 				let track = normaliseTrackUri(raw)
+				if (!track || track === 'spotify:track:') {
+					self.log('error', 'Play Track: no track set - edit the button and paste a track URI')
+					return
+				}
 				let positionRaw = (action.options.position || '').trim()
 				let positionMs = positionRaw !== '' ? parsePositionToMs(positionRaw) : undefined
 				try {
@@ -376,7 +385,7 @@ function getActions() {
 			],
 			callback: async (action) => {
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(action.options.volume) } catch (e) {}
+					try { await self._as.setVolume(action.options.volume) } catch (e) { self.log('warn', `Set volume (AppleScript) failed: ${e.message}`) }
 					self.state.volume = action.options.volume
 					self._volumeSetAt = Date.now()
 					updateVariables.call(self)
@@ -395,7 +404,7 @@ function getActions() {
 			callback: async () => {
 				self._premuteVolume = self.state.volume || 50
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(0) } catch (e) {}
+					try { await self._as.setVolume(0) } catch (e) { self.log('warn', `Mute (AppleScript) failed: ${e.message}`) }
 				} else {
 					try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 				}
@@ -410,7 +419,7 @@ function getActions() {
 			callback: async () => {
 				let restore = (self._premuteVolume > 0) ? self._premuteVolume : 50
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(restore) } catch (e) {}
+					try { await self._as.setVolume(restore) } catch (e) { self.log('warn', `Unmute (AppleScript) failed: ${e.message}`) }
 				} else {
 					try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 				}
@@ -426,7 +435,7 @@ function getActions() {
 				if (self.state.volume === 0) {
 					let restore = (self._premuteVolume > 0) ? self._premuteVolume : 50
 					if (self._useAppleScript) {
-						try { await self._as.setVolume(restore) } catch (e) {}
+						try { await self._as.setVolume(restore) } catch (e) { self.log('warn', `Unmute (AppleScript) failed: ${e.message}`) }
 					} else {
 						try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 					}
@@ -434,7 +443,7 @@ function getActions() {
 				} else {
 					self._premuteVolume = self.state.volume
 					if (self._useAppleScript) {
-						try { await self._as.setVolume(0) } catch (e) {}
+						try { await self._as.setVolume(0) } catch (e) { self.log('warn', `Mute (AppleScript) failed: ${e.message}`) }
 					} else {
 						try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 					}
@@ -463,7 +472,7 @@ function getActions() {
 				self.state.volume = v
 				self._volumeSetAt = Date.now()
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(v) } catch (e) {}
+					try { await self._as.setVolume(v) } catch (e) { self.log('warn', `Volume up (AppleScript) failed: ${e.message}`) }
 				} else {
 					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume up failed: ${e.message}`) }
 				}
@@ -490,7 +499,7 @@ function getActions() {
 				self.state.volume = v
 				self._volumeSetAt = Date.now()
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(v) } catch (e) {}
+					try { await self._as.setVolume(v) } catch (e) { self.log('warn', `Volume down (AppleScript) failed: ${e.message}`) }
 				} else {
 					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume down failed: ${e.message}`) }
 				}
@@ -654,7 +663,10 @@ function getActions() {
 				let stepVol = (target - start) / steps
 				if (self._fadeTimer) clearInterval(self._fadeTimer)
 				let current = 0
+				let busy = false
 				let timer = setInterval(async () => {
+					if (busy) return
+					busy = true
 					current++
 					let vol = Math.round(Math.min(100, Math.max(0, start + stepVol * current)))
 					try {
@@ -664,10 +676,22 @@ function getActions() {
 							await self.spotify.setVolume(vol)
 						}
 						self.state.volume = vol
+						self._volumeSetAt = Date.now()
 					} catch (e) {}
+					busy = false
 					if (current >= steps) {
 						clearInterval(timer)
 						if (self._fadeTimer === timer) self._fadeTimer = null
+						try {
+							if (self._useAppleScript) {
+								await self._as.setVolume(target)
+							} else {
+								await self.spotify.setVolume(target)
+							}
+							self.state.volume = target
+							self._volumeSetAt = Date.now()
+							updateVariables.call(self)
+						} catch (e) {}
 					}
 				}, stepMs)
 				self._fadeTimer = timer
@@ -702,16 +726,30 @@ function getActions() {
 			callback: async (action) => {
 				let target = action.options.target
 				let duration = action.options.duration * 1000
+				if (self._fadeTimer) {
+					clearInterval(self._fadeTimer)
+					self._fadeTimer = null
+				}
+				let preZeroFailed = false
 				if (self._useAppleScript) {
-					try { await self._as.setVolume(0) } catch (e) {}
+					try { await self._as.setVolume(0) } catch (e) {
+						preZeroFailed = true
+						self.log('warn', `Play+Fade: could not zero volume first: ${e.message}`)
+					}
 					self.state.volume = 0
 					updateVariables.call(self)
 					try { await self._as.play() } catch (e) {
 						self.log('error', `Play+Fade play failed: ${e.message}`)
 						return
 					}
+					if (preZeroFailed) {
+						try { await self._as.setVolume(0) } catch (e) { self.log('warn', 'Play+Fade: playback may have started at full volume') }
+					}
 				} else {
-					try { await self.spotify.setVolume(0) } catch (e) {}
+					try { await self.spotify.setVolume(0) } catch (e) {
+						preZeroFailed = true
+						self.log('warn', `Play+Fade: could not zero volume first: ${e.message}`)
+					}
 					self.state.volume = 0
 					updateVariables.call(self)
 					try {
@@ -727,15 +765,20 @@ function getActions() {
 							self.log('error', `Play+Fade play failed: ${e.message}`); return
 						}
 					}
+					if (preZeroFailed) {
+						try { await self.spotify.setVolume(0) } catch (e) { self.log('warn', 'Play+Fade: playback may have started at full volume') }
+					}
 				}
 				self.state.playerState = 'Playing'
 				self.checkFeedbacks()
 				let steps = Math.max(1, Math.round(duration / 250))
 				let stepMs = duration / steps
 				let stepVol = target / steps
-				if (self._fadeTimer) clearInterval(self._fadeTimer)
 				let current = 0
+				let busy = false
 				let timer = setInterval(async () => {
+					if (busy) return
+					busy = true
 					current++
 					let vol = Math.round(Math.min(target, Math.max(0, stepVol * current)))
 					try {
@@ -745,11 +788,23 @@ function getActions() {
 							await self.spotify.setVolume(vol)
 						}
 						self.state.volume = vol
+						self._volumeSetAt = Date.now()
 						updateVariables.call(self)
 					} catch (e) {}
+					busy = false
 					if (current >= steps) {
 						clearInterval(timer)
 						if (self._fadeTimer === timer) self._fadeTimer = null
+						try {
+							if (self._useAppleScript) {
+								await self._as.setVolume(target)
+							} else {
+								await self.spotify.setVolume(target)
+							}
+							self.state.volume = target
+							self._volumeSetAt = Date.now()
+							updateVariables.call(self)
+						} catch (e) {}
 					}
 				}, stepMs)
 				self._fadeTimer = timer
@@ -775,6 +830,10 @@ function getActions() {
 				}
 				let raw = await self.parseVariablesInString(action.options.track)
 				let track = normaliseTrackUri(raw)
+				if (!track || track === 'spotify:track:') {
+					self.log('error', 'Add to Queue: no track set - edit the button and paste a track URI')
+					return
+				}
 				try {
 					await self.spotify.addToQueue(track)
 					self.log('info', `Queued: ${track}`)
@@ -792,7 +851,12 @@ function getActions() {
 					self.log('warn', 'Save Track requires internet - unavailable in offline fallback mode')
 					return
 				}
-				let id = (self.state.trackId || '').replace('spotify:track:', '')
+				let uri = self.state.trackId || ''
+				if (!uri.startsWith('spotify:track:')) {
+					if (uri) self.log('warn', 'Save Track only works for music tracks')
+					return
+				}
+				let id = uri.replace('spotify:track:', '')
 				if (!id) return
 				try {
 					await self.spotify.saveTrack(id)
@@ -812,7 +876,12 @@ function getActions() {
 					self.log('warn', 'Remove Track requires internet - unavailable in offline fallback mode')
 					return
 				}
-				let id = (self.state.trackId || '').replace('spotify:track:', '')
+				let uri = self.state.trackId || ''
+				if (!uri.startsWith('spotify:track:')) {
+					if (uri) self.log('warn', 'Remove Track only works for music tracks')
+					return
+				}
+				let id = uri.replace('spotify:track:', '')
 				if (!id) return
 				try {
 					await self.spotify.removeTrack(id)
@@ -832,7 +901,12 @@ function getActions() {
 					self.log('warn', 'Like/Unlike requires internet - unavailable in offline fallback mode')
 					return
 				}
-				let id = (self.state.trackId || '').replace('spotify:track:', '')
+				let uri = self.state.trackId || ''
+				if (!uri.startsWith('spotify:track:')) {
+					if (uri) self.log('warn', 'Like/Unlike only works for music tracks')
+					return
+				}
+				let id = uri.replace('spotify:track:', '')
 				if (!id) return
 				try {
 					if (self.state.isLiked) {
@@ -858,7 +932,11 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
-				let slot = (action.options.slot || 'main').trim()
+				let slot = (action.options.slot || 'main').trim() || 'main'
+				if (slot === '__proto__' || slot === 'constructor' || slot === 'prototype') {
+					self.log('error', `Bookmark name "${slot}" is not allowed - pick another name`)
+					return
+				}
 				if (!self.state.trackId) {
 					self.log('warn', `Bookmark save ignored - no track playing`)
 					return
@@ -950,7 +1028,11 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
-				let slot = action.options.slot || 'main'
+				let slot = (action.options.slot || 'main').trim() || 'main'
+				if (slot === '__proto__' || slot === 'constructor' || slot === 'prototype') {
+					self.log('error', `Bookmark name "${slot}" is not allowed - pick another name`)
+					return
+				}
 				if (!self.config.bookmarks) self.config.bookmarks = {}
 				let bm = self.config.bookmarks[slot]
 

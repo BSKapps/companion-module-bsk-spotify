@@ -393,7 +393,7 @@ function getFeedbacks() {
 				},
 			],
 			callback: (event) => {
-				let slot = event.options.slot || 'main'
+				let slot = (event.options.slot || 'main').trim() || 'main'
 				let bm = self.config && self.config.bookmarks && self.config.bookmarks[slot]
 				return !!(bm && bm.trackUri)
 			},

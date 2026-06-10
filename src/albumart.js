@@ -8,15 +8,22 @@ function fetchUrl(url, depth = 0) {
 	return new Promise((resolve, reject) => {
 		if (depth > 5) return reject(new Error('Too many redirects'))
 		let client = url.startsWith('https') ? https : http
-		client.get(url, (res) => {
+		let req = client.get(url, (res) => {
 			if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+				res.resume()
 				return fetchUrl(res.headers.location, depth + 1).then(resolve).catch(reject)
+			}
+			if (res.statusCode >= 400) {
+				res.resume()
+				return reject(new Error(`Album art HTTP ${res.statusCode}`))
 			}
 			let chunks = []
 			res.on('data', (d) => chunks.push(d))
 			res.on('end', () => resolve(Buffer.concat(chunks)))
 			res.on('error', reject)
-		}).on('error', reject)
+		})
+		req.on('error', reject)
+		req.setTimeout(8000, () => req.destroy(new Error('Album art request timeout')))
 	})
 }
 

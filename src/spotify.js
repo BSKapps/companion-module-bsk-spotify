@@ -3,11 +3,13 @@ const querystring = require('querystring')
 
 class SpotifyClient {
 	constructor(clientId, clientSecret, refreshToken, redirectUri) {
-		this.clientId = clientId
-		this.clientSecret = clientSecret
-		this.refreshToken = refreshToken
+		this.clientId = (clientId || '').trim()
+		this.clientSecret = (clientSecret || '').trim()
+		this.refreshToken = (refreshToken || '').trim()
 		this.redirectUri = redirectUri
 		this.accessToken = null
+		this.onRefreshTokenChanged = null
+		this._refreshing = null
 	}
 
 	setAccessToken(token) {
@@ -15,6 +17,14 @@ class SpotifyClient {
 	}
 
 	async refreshAccessToken() {
+		if (this._refreshing) return this._refreshing
+		this._refreshing = this._doRefresh().finally(() => {
+			this._refreshing = null
+		})
+		return this._refreshing
+	}
+
+	async _doRefresh() {
 		let body = querystring.stringify({
 			grant_type: 'refresh_token',
 			refresh_token: this.refreshToken,
@@ -24,8 +34,11 @@ class SpotifyClient {
 			Authorization: 'Basic ' + Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64'),
 		})
 		this.accessToken = data.access_token
-		if (data.refresh_token) {
+		if (data.refresh_token && data.refresh_token !== this.refreshToken) {
 			this.refreshToken = data.refresh_token
+			if (this.onRefreshTokenChanged) {
+				try { this.onRefreshTokenChanged(data.refresh_token) } catch (e) {}
+			}
 		}
 		return data
 	}
@@ -183,7 +196,9 @@ class SpotifyClient {
 				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
 			}
 			if (e.statusCode === 429) {
-				let retryAfter = Math.min(parseInt(e.retryAfter || '5', 10), 30) * 1000
+				let seconds = parseInt(e.retryAfter || '5', 10)
+				if (!Number.isFinite(seconds) || seconds < 0) seconds = 5
+				let retryAfter = Math.min(seconds, 30) * 1000
 				await new Promise((r) => setTimeout(r, retryAfter))
 				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
 			}
@@ -217,27 +232,32 @@ class SpotifyClient {
 				res.on('data', (d) => chunks.push(d))
 				res.on('end', () => {
 					let raw = Buffer.concat(chunks).toString()
+					if (res.statusCode >= 400) {
+						let msg = `HTTP ${res.statusCode}`
+						try {
+							let data = JSON.parse(raw)
+							if (typeof data.error === 'string') {
+								msg = data.error_description || data.error
+							} else if (data.error && data.error.message) {
+								msg = data.error.message
+							}
+						} catch (parseErr) {
+							if (raw.length > 0) msg = `HTTP ${res.statusCode}: ${raw}`
+						}
+						let err = new Error(msg)
+						err.statusCode = res.statusCode
+						err.retryAfter = res.headers['retry-after']
+						reject(err)
+						return
+					}
 					if (res.statusCode === 204 || raw.length === 0) {
 						resolve(null)
 						return
 					}
 					try {
-						let data = JSON.parse(raw)
-						if (res.statusCode >= 400) {
-							let msg = data.error ? data.error.message : `HTTP ${res.statusCode}`
-							let err = new Error(msg)
-							err.statusCode = res.statusCode
-							err.retryAfter = res.headers['retry-after']
-							reject(err)
-						} else {
-							resolve(data)
-						}
+						resolve(JSON.parse(raw))
 					} catch (e) {
-						if (res.statusCode >= 400) {
-							reject(new Error(`HTTP ${res.statusCode}: ${raw}`))
-						} else {
-							resolve(null)
-						}
+						resolve(null)
 					}
 				})
 			})

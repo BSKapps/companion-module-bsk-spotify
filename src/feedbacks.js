@@ -267,6 +267,7 @@ function getFeedbacks() {
 				},
 			],
 			callback: (event) => {
+				if (self.state.playerState === 'Stopped') return false
 				let parts = (event.options.time || '').split(':')
 				let ms = parts.length === 2 ? (parseInt(parts[0], 10) * 60 + parseFloat(parts[1])) * 1000 : parseFloat(parts[0]) * 1000
 				return (self.state.positionMs || 0) >= ms
@@ -287,6 +288,7 @@ function getFeedbacks() {
 				},
 			],
 			callback: (event) => {
+				if (self.state.playerState === 'Stopped') return false
 				let parts = (event.options.time || '').split(':')
 				let ms = parts.length === 2 ? (parseInt(parts[0], 10) * 60 + parseFloat(parts[1])) * 1000 : parseFloat(parts[0]) * 1000
 				return (self.state.positionMs || 0) < ms
@@ -311,6 +313,7 @@ function getFeedbacks() {
 				},
 			],
 			callback: (event) => {
+				if (self.state.playerState === 'Stopped') return false
 				let remaining = (self.state.durationMs || 0) - (self.state.positionMs || 0)
 				return remaining > 0 && remaining <= event.options.seconds * 1000
 			},

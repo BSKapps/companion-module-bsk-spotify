@@ -90,13 +90,18 @@ test('volumeMuted true at 0', () => {
 
 // nearEnd
 test('nearEnd true when remaining under threshold', () => {
-	let inst = makeInstance({ positionMs: 175000, durationMs: 180000 }) // 5s left
+	let inst = makeInstance({ playerState: 'Playing', positionMs: 175000, durationMs: 180000 }) // 5s left
 	expect(fb(inst, 'nearEnd', { seconds: 10 })).toBe(true)
 	expect(fb(inst, 'nearEnd', { seconds: 3 })).toBe(false)
 })
 
 test('nearEnd false when track ended', () => {
-	let inst = makeInstance({ positionMs: 180000, durationMs: 180000 })
+	let inst = makeInstance({ playerState: 'Playing', positionMs: 180000, durationMs: 180000 })
+	expect(fb(inst, 'nearEnd', { seconds: 10 })).toBe(false)
+})
+
+test('nearEnd false when stopped with retained position', () => {
+	let inst = makeInstance({ playerState: 'Stopped', positionMs: 175000, durationMs: 180000 })
 	expect(fb(inst, 'nearEnd', { seconds: 10 })).toBe(false)
 })
 
@@ -108,9 +113,15 @@ test('trackLiked feedback', () => {
 
 // positionPast
 test('positionPast M:SS format', () => {
-	let inst = makeInstance({ positionMs: 35000 })
+	let inst = makeInstance({ playerState: 'Playing', positionMs: 35000 })
 	expect(fb(inst, 'positionPast', { time: '0:30' })).toBe(true)
 	expect(fb(inst, 'positionPast', { time: '1:00' })).toBe(false)
+})
+
+test('position feedbacks false when stopped with retained position', () => {
+	let inst = makeInstance({ playerState: 'Stopped', positionMs: 35000, durationMs: 180000 })
+	expect(fb(inst, 'positionPast', { time: '0:30' })).toBe(false)
+	expect(fb(inst, 'positionBefore', { time: '1:00' })).toBe(false)
 })
 
 // hasActiveDevice

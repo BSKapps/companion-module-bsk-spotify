@@ -689,15 +689,18 @@ function getActions() {
 						clearInterval(timer)
 						if (self._fadeTimer !== timer) return
 						self._fadeTimer = null
+						let settleAt = Date.now()
 						try {
 							if (self._useAppleScript) {
 								await self._as.setVolume(target)
 							} else {
 								await self.spotify.setVolume(target)
 							}
-							self.state.volume = target
-							self._volumeSetAt = Date.now()
-							updateVariables.call(self)
+							if (self._fadeTimer === null && (self._volumeSetAt || 0) <= settleAt) {
+								self.state.volume = target
+								self._volumeSetAt = Date.now()
+								updateVariables.call(self)
+							}
 						} catch (e) {}
 					}
 				}, stepMs)
@@ -776,6 +779,7 @@ function getActions() {
 						try { await self.spotify.setVolume(0) } catch (e) { self.log('warn', 'Play+Fade: playback may have started at full volume') }
 					}
 				}
+				if (self._destroyed) return
 				self.state.playerState = 'Playing'
 				self.checkFeedbacks()
 				let steps = Math.max(1, Math.round(duration / 250))
@@ -813,15 +817,18 @@ function getActions() {
 						clearInterval(timer)
 						if (self._fadeTimer !== timer) return
 						self._fadeTimer = null
+						let settleAt = Date.now()
 						try {
 							if (self._useAppleScript) {
 								await self._as.setVolume(target)
 							} else {
 								await self.spotify.setVolume(target)
 							}
-							self.state.volume = target
-							self._volumeSetAt = Date.now()
-							updateVariables.call(self)
+							if (self._fadeTimer === null && (self._volumeSetAt || 0) <= settleAt) {
+								self.state.volume = target
+								self._volumeSetAt = Date.now()
+								updateVariables.call(self)
+							}
 						} catch (e) {}
 					}
 				}, stepMs)

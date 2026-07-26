@@ -72,7 +72,7 @@ Save Bookmark captures the current track, position, and playlist/album context. 
 
 ## Offline fallback (macOS only)
 
-If the Web API becomes unreachable, the module switches to controlling the local Spotify app via AppleScript after about 6 seconds. Play, pause, next, previous, seek, volume, shuffle, and repeat keep working, and track info still updates. Actions that need the internet (play by ID, play playlist, queue, like, bookmark resume) log a warning and do nothing. The module retries the Web API every 20 seconds or so and switches back automatically.
+If the Web API becomes unreachable, the module switches to controlling the local Spotify app via AppleScript after about 6 seconds. Play, pause, next, previous, seek, volume, shuffle, and repeat keep working, and track info still updates. Actions that need the internet (play by ID, play playlist, queue, like, bookmark resume) log a warning and do nothing. The module probes the Web API every 10 seconds or so and switches back automatically once two probes in a row succeed, so an unstable connection cannot flip it back and forth mid-show.
 
 ## Tips
 

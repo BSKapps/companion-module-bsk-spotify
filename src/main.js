@@ -66,6 +66,7 @@ class SpotifyInstance extends InstanceBase {
 		this._as = new AppleScriptSpotify()
 		this._statusOk = false
 		this._probeInFlight = false
+		this._probeSuccesses = 0
 		this._lastApiSuccessAt = 0
 		this._destroyed = false
 	}
@@ -93,6 +94,7 @@ class SpotifyInstance extends InstanceBase {
 		this._statusOk = false
 		this._useAppleScript = false
 		this._asPollCount = 0
+		this._probeSuccesses = 0
 		await this.applyConfig(config)
 	}
 
@@ -290,6 +292,9 @@ class SpotifyInstance extends InstanceBase {
 		if (this._probeInFlight) return
 		this._probeInFlight = true
 		this.spotify.getPlaybackState().then(() => {
+			this._probeSuccesses++
+			if (this._probeSuccesses < 2) return
+			this._probeSuccesses = 0
 			this._useAppleScript = false
 			this._asPollCount = 0
 			this._consecutivePollErrors = 0
@@ -301,7 +306,9 @@ class SpotifyInstance extends InstanceBase {
 				this.updateStatus(InstanceStatus.Ok)
 				this.checkFeedbacks('apiHealthy')
 			}
-		}).catch(() => {}).finally(() => {
+		}).catch(() => {
+			this._probeSuccesses = 0
+		}).finally(() => {
 			this._probeInFlight = false
 		})
 	}
@@ -325,7 +332,7 @@ class SpotifyInstance extends InstanceBase {
 		try {
 			if (this._useAppleScript) {
 				this._asPollCount++
-				if (this._asPollCount % 10 === 0) {
+				if (this._asPollCount % 5 === 0) {
 					this.probeApiRecovery()
 				}
 				await this.appleScriptPoll()
@@ -458,6 +465,7 @@ class SpotifyInstance extends InstanceBase {
 				if (process.platform === 'darwin') {
 					this._useAppleScript = true
 					this._asPollCount = 0
+					this._probeSuccesses = 0
 					this.log('warn', 'Web API unreachable - switching to AppleScript fallback (macOS only)')
 					this.updateStatus(InstanceStatus.Warning, 'Offline - using AppleScript fallback (macOS only)')
 				} else {

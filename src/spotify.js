@@ -1,6 +1,10 @@
 const https = require('https')
 const querystring = require('querystring')
 
+const DEFAULT_TIMEOUT_MS = 10000
+const POLL_TIMEOUT_MS = 5000
+const TRANSPORT_TIMEOUT_MS = 3000
+
 class SpotifyClient {
 	constructor(clientId, clientSecret, refreshToken, redirectUri) {
 		this.clientId = (clientId || '').trim()
@@ -57,25 +61,25 @@ class SpotifyClient {
 	}
 
 	async getPlaybackState() {
-		return this._apiGet('/v1/me/player')
+		return this._apiGet('/v1/me/player', POLL_TIMEOUT_MS)
 	}
 
 	async play(deviceId) {
 		let path = '/v1/me/player/play'
 		if (deviceId) path += `?device_id=${encodeURIComponent(deviceId)}`
-		return this._apiPut(path, {})
+		return this._apiPut(path, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async pause() {
-		return this._apiPut('/v1/me/player/pause', {})
+		return this._apiPut('/v1/me/player/pause', {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async next() {
-		return this._apiPost('/v1/me/player/next', {})
+		return this._apiPost('/v1/me/player/next', {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async previous() {
-		return this._apiPost('/v1/me/player/previous', {})
+		return this._apiPost('/v1/me/player/previous', {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async playTrack(trackUri, positionMs, deviceId) {
@@ -151,36 +155,36 @@ class SpotifyClient {
 	}
 
 	async seekTo(positionMs) {
-		return this._apiPut(`/v1/me/player/seek?position_ms=${Math.round(positionMs)}`, {})
+		return this._apiPut(`/v1/me/player/seek?position_ms=${Math.round(positionMs)}`, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async setVolume(percent) {
-		return this._apiPut(`/v1/me/player/volume?volume_percent=${Math.round(percent)}`, {})
+		return this._apiPut(`/v1/me/player/volume?volume_percent=${Math.round(percent)}`, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async setShuffle(state, deviceId) {
 		let path = `/v1/me/player/shuffle?state=${state ? 'true' : 'false'}`
 		if (deviceId) path += `&device_id=${encodeURIComponent(deviceId)}`
-		return this._apiPut(path, {})
+		return this._apiPut(path, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async setRepeat(state) {
-		return this._apiPut(`/v1/me/player/repeat?state=${state}`, {})
+		return this._apiPut(`/v1/me/player/repeat?state=${state}`, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
-	async _apiGet(path) {
-		return this._apiCall('GET', path, null)
+	async _apiGet(path, timeoutMs) {
+		return this._apiCall('GET', path, null, timeoutMs)
 	}
 
-	async _apiPut(path, body) {
-		return this._apiCall('PUT', path, JSON.stringify(body))
+	async _apiPut(path, body, timeoutMs) {
+		return this._apiCall('PUT', path, JSON.stringify(body), timeoutMs)
 	}
 
-	async _apiPost(path, body) {
-		return this._apiCall('POST', path, JSON.stringify(body))
+	async _apiPost(path, body, timeoutMs) {
+		return this._apiCall('POST', path, JSON.stringify(body), timeoutMs)
 	}
 
-	async _apiCall(method, path, bodyStr) {
+	async _apiCall(method, path, bodyStr, timeoutMs) {
 		let headers = {
 			Authorization: `Bearer ${this.accessToken}`,
 		}
@@ -188,23 +192,23 @@ class SpotifyClient {
 			headers['Content-Type'] = 'application/json'
 		}
 		try {
-			return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
+			return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers, timeoutMs)
 		} catch (e) {
 			if (e.statusCode === 401 || /^HTTP 401/.test(e.message) || /token expired|No token|Unauthorized/i.test(e.message)) {
 				await this.refreshAccessToken()
 				headers.Authorization = `Bearer ${this.accessToken}`
-				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
+				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers, timeoutMs)
 			}
 			if (e.statusCode === 429) {
 				let seconds = parseInt(e.retryAfter || '5', 10)
 				if (!Number.isFinite(seconds) || seconds < 0) seconds = 5
 				let retryAfter = Math.min(seconds, 30) * 1000
 				await new Promise((r) => setTimeout(r, retryAfter))
-				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
+				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers, timeoutMs)
 			}
 			if (e.statusCode === 502 || e.statusCode === 503) {
 				await new Promise((r) => setTimeout(r, 1000))
-				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers)
+				return await this._request(method, `https://api.spotify.com${path}`, bodyStr, headers, timeoutMs)
 			}
 			throw e
 		}
@@ -214,7 +218,7 @@ class SpotifyClient {
 		return this._request('POST', url, body, headers)
 	}
 
-	_request(method, url, body, headers) {
+	_request(method, url, body, headers, timeoutMs) {
 		return new Promise((resolve, reject) => {
 			let parsed = new URL(url)
 			let options = {
@@ -222,7 +226,7 @@ class SpotifyClient {
 				path: parsed.pathname + parsed.search,
 				method,
 				headers: Object.assign({}, headers),
-				timeout: 10000,
+				timeout: timeoutMs || DEFAULT_TIMEOUT_MS,
 			}
 			if (body) {
 				options.headers['Content-Length'] = Buffer.byteLength(body)

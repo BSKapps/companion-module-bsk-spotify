@@ -278,6 +278,14 @@ class SpotifyInstance extends InstanceBase {
 					this.state.nextTrackId = ''
 					this.checkFeedbacks('albumArt')
 				}
+				if (s.artworkUrl && s.artworkUrl !== this.state.albumArtUrl) {
+					this.state.albumArtUrl = s.artworkUrl
+					this._albumArtCache = {}
+					processAlbumArt(s.artworkUrl).then((slices) => {
+						this._albumArtCache[s.artworkUrl] = slices
+						this.checkFeedbacks('albumArt')
+					}).catch(() => {})
+				}
 				this._lastPolledPositionMs = s.positionMs
 			}
 			this._lastPollAt = Date.now()

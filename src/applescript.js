@@ -23,11 +23,15 @@ function runScript(script) {
 	})
 }
 
+function safeUri(uri) {
+	return typeof uri === 'string' && /^spotify(:[a-zA-Z0-9_-]+)+$/.test(uri)
+}
+
 class AppleScriptSpotify {
 	async pollState() {
 		let script = [
 			'if application "Spotify" is not running then',
-			'\treturn "stopped|0|50|false|false||||0|"',
+			'\treturn "stopped|0|50|false|false||||0||"',
 			'end if',
 			'tell application "Spotify"',
 			'\tset ps to player state as string',
@@ -35,7 +39,7 @@ class AppleScriptSpotify {
 			'\tset sh to shuffling as string',
 			'\tset rp to repeating as string',
 			'\tif ps is "stopped" then',
-			'\t\treturn "stopped|0|" & sv & "|" & sh & "|" & rp & "||||0|"',
+			'\t\treturn "stopped|0|" & sv & "|" & sh & "|" & rp & "||||0||"',
 			'\tend if',
 			'\tset pp to player position as real',
 			'\tset ct to current track',
@@ -47,7 +51,11 @@ class AppleScriptSpotify {
 			'\ttry',
 			'\t\tset tid to id of ct as string',
 			'\tend try',
-			'\treturn ps & "|" & pp & "|" & sv & "|" & sh & "|" & rp & "|" & tn & "|" & ta & "|" & tal & "|" & td & "|" & tid',
+			'\tset art to ""',
+			'\ttry',
+			'\t\tset art to artwork url of ct as string',
+			'\tend try',
+			'\treturn ps & "|" & pp & "|" & sv & "|" & sh & "|" & rp & "|" & tn & "|" & ta & "|" & tal & "|" & td & "|" & tid & "|" & art',
 			'end tell',
 		].join('\n')
 
@@ -65,7 +73,35 @@ class AppleScriptSpotify {
 			albumName: p[7] || '',
 			durationMs: (() => { let d = parseFloat(p[8]) || 0; return Math.round(d > 3600 ? d : d * 1000) })(),
 			trackId: /^spotify:/.test(p[9] || '') ? p[9] : '',
+			artworkUrl: /^https:\/\//.test(p[10] || '') ? p[10] : '',
 		}
+	}
+
+	buildPlayUriScript(uri, contextUri, positionMs) {
+		if (!safeUri(uri)) throw new Error(`Not a valid Spotify URI: ${uri}`)
+		if (contextUri && !safeUri(contextUri)) throw new Error(`Not a valid Spotify URI: ${contextUri}`)
+		let playLine = contextUri
+			? `\tplay track "${uri}" in context "${contextUri}"`
+			: `\tplay track "${uri}"`
+		let lines = [
+			'if application "Spotify" is not running then',
+			'\ttell application "Spotify" to activate',
+			'\tdelay 2',
+			'end if',
+			'tell application "Spotify"',
+			playLine,
+		]
+		let ms = Number(positionMs)
+		if (Number.isFinite(ms) && ms > 0) {
+			lines.push('\tdelay 0.5')
+			lines.push(`\tset player position to ${ms / 1000}`)
+		}
+		lines.push('end tell')
+		return lines.join('\n')
+	}
+
+	async playUri(uri, contextUri, positionMs) {
+		await runScript(this.buildPlayUriScript(uri, contextUri, positionMs))
 	}
 
 	async play() {

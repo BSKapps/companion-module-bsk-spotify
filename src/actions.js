@@ -157,10 +157,6 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
-				if (self._useAppleScript) {
-					self.log('warn', 'Play Track By ID requires internet - unavailable in offline fallback mode')
-					return
-				}
 				let raw = await self.parseVariablesInString(action.options.track)
 				let track = normaliseTrackUri(raw)
 				if (!track || track === 'spotify:track:') {
@@ -169,6 +165,11 @@ function getActions() {
 				}
 				let positionRaw = (action.options.position || '').trim()
 				let positionMs = positionRaw !== '' ? parsePositionToMs(positionRaw) : undefined
+				if (self._useAppleScript) {
+					try { await self._as.playUri(track, null, positionMs) } catch (e) { self.log('error', `Play failed: ${e.message}`) }
+					setTimeout(() => self.poll(), 500)
+					return
+				}
 				try {
 					await self.spotify.playTrack(track, positionMs)
 				} catch (e) {
@@ -223,10 +224,6 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
-				if (self._useAppleScript) {
-					self.log('warn', 'Play Playlist requires internet - unavailable in offline fallback mode')
-					return
-				}
 				let raw = await self.parseVariablesInString(action.options.context)
 				let context = normaliseContextUri(raw)
 				if (!context || context === 'spotify:playlist:' || context === 'spotify:album:' || context === 'spotify:artist:') {
@@ -241,6 +238,18 @@ function getActions() {
 				let offsetIndex = wantShuffle ? undefined : Math.max(0, (parseInt(action.options.offset, 10) || 1) - 1)
 				let positionRaw = (action.options.position || '').trim()
 				let positionMs = positionRaw !== '' ? parsePositionToMs(positionRaw) : undefined
+
+				if (self._useAppleScript) {
+					if (offsetIndex > 0) self.log('warn', 'Play Playlist: start-at-track is not available offline - starting from the beginning')
+					try {
+						await self._as.playUri(context, null, offsetIndex > 0 ? undefined : positionMs)
+						try { await self._as.setShuffle(wantShuffle) } catch (e) {}
+					} catch (e) {
+						self.log('error', `Playlist play failed: ${e.message}`)
+					}
+					setTimeout(() => self.poll(), 500)
+					return
+				}
 
 				self.log('info', `Play context: ${context} shuffle=${wantShuffle} offset=${offsetIndex}`)
 
@@ -992,10 +1001,6 @@ function getActions() {
 				},
 			],
 			callback: async (action) => {
-				if (self._useAppleScript) {
-					self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
-					return
-				}
 				let slot = (action.options.slot || 'main').trim() || 'main'
 				let bm = self.config.bookmarks && self.config.bookmarks[slot]
 				if (!bm || !bm.trackUri) {
@@ -1006,6 +1011,16 @@ function getActions() {
 				self.log('info', `Bookmark resume "${slot}": ${bm.trackName || bm.trackUri} @ ${Math.round((bm.positionMs || 0) / 1000)}s context=${bm.contextUri || 'none'}`)
 
 				let contextSupported = bm.contextUri && /^spotify:(playlist|album):/.test(bm.contextUri)
+
+				if (self._useAppleScript) {
+					try {
+						await self._as.playUri(bm.trackUri, contextSupported ? bm.contextUri : null, bm.positionMs)
+					} catch (e) {
+						self.log('error', `Bookmark resume failed: ${e.message}`)
+					}
+					setTimeout(() => self.poll(), 500)
+					return
+				}
 
 				let attempt = async (deviceId) => {
 					if (contextSupported) {
@@ -1076,11 +1091,20 @@ function getActions() {
 					self.checkFeedbacks('bookmarkExists')
 					self.log('info', `SAVED "${slot}": ${self.state.trackName} @ ${Math.floor((self.state.positionMs || 0) / 1000)}s`)
 				} else {
+					let contextSupportsOffset = bm.contextUri && /^spotify:(playlist|album):/.test(bm.contextUri)
 					if (self._useAppleScript) {
-						self.log('warn', 'Bookmark Resume requires internet - unavailable in offline fallback mode')
+						try {
+							await self._as.playUri(bm.trackUri, contextSupportsOffset ? bm.contextUri : null, bm.positionMs)
+							delete self.config.bookmarks[slot]
+							self.saveConfig(self.config)
+							self.checkFeedbacks('bookmarkExists')
+							self.log('info', `RESUMED "${slot}" - ready to save again`)
+						} catch (e) {
+							self.log('error', `Resume failed: ${e.message}`)
+						}
+						setTimeout(() => self.poll(), 500)
 						return
 					}
-					let contextSupportsOffset = bm.contextUri && /^spotify:(playlist|album):/.test(bm.contextUri)
 					try {
 						if (contextSupportsOffset) {
 							await self.spotify.playContextAtTrackUri(bm.contextUri, bm.trackUri, 0)

@@ -158,8 +158,10 @@ class SpotifyClient {
 		return this._apiPut(`/v1/me/player/seek?position_ms=${Math.round(positionMs)}`, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
-	async setVolume(percent) {
-		return this._apiPut(`/v1/me/player/volume?volume_percent=${Math.round(percent)}`, {}, TRANSPORT_TIMEOUT_MS)
+	async setVolume(percent, deviceId) {
+		let path = `/v1/me/player/volume?volume_percent=${Math.round(percent)}`
+		if (deviceId) path += `&device_id=${encodeURIComponent(deviceId)}`
+		return this._apiPut(path, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async setShuffle(state, deviceId) {
@@ -168,8 +170,10 @@ class SpotifyClient {
 		return this._apiPut(path, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
-	async setRepeat(state) {
-		return this._apiPut(`/v1/me/player/repeat?state=${state}`, {}, TRANSPORT_TIMEOUT_MS)
+	async setRepeat(state, deviceId) {
+		let path = `/v1/me/player/repeat?state=${state}`
+		if (deviceId) path += `&device_id=${encodeURIComponent(deviceId)}`
+		return this._apiPut(path, {}, TRANSPORT_TIMEOUT_MS)
 	}
 
 	async _apiGet(path, timeoutMs) {

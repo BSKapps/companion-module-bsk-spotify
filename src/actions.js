@@ -49,6 +49,18 @@ async function simpleAction(self, label, asFn, apiFn) {
 	try { await apiFn() } catch (e) { self.log('error', `${label} failed: ${e.message}`) }
 }
 
+async function withDeviceRetry(self, apiFn) {
+	try {
+		return await apiFn(undefined)
+	} catch (e) {
+		if (!/no active device|device.*not.*found/i.test(e.message)) throw e
+		let pick = await self.ensureActiveDevice()
+		if (!pick) throw new Error('No Spotify devices available')
+		self.log('info', `Retrying on device: ${pick.name}`)
+		return await apiFn(pick.id)
+	}
+}
+
 function getActions() {
 	let self = this
 
@@ -400,7 +412,7 @@ function getActions() {
 					updateVariables.call(self)
 					return
 				}
-				try { await self.spotify.setVolume(action.options.volume) } catch (e) { self.log('error', `Set volume failed: ${e.message}`) }
+				try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(action.options.volume, deviceId)) } catch (e) { self.log('error', `Set volume failed: ${e.message}`) }
 				self.state.volume = action.options.volume
 				self._volumeSetAt = Date.now()
 				updateVariables.call(self)
@@ -415,7 +427,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(0) } catch (e) { self.log('warn', `Mute (AppleScript) failed: ${e.message}`) }
 				} else {
-					try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
+					try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(0, deviceId)) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 				}
 				self.state.volume = 0
 				updateVariables.call(self)
@@ -430,7 +442,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(restore) } catch (e) { self.log('warn', `Unmute (AppleScript) failed: ${e.message}`) }
 				} else {
-					try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
+					try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(restore, deviceId)) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 				}
 				self.state.volume = restore
 				updateVariables.call(self)
@@ -446,7 +458,7 @@ function getActions() {
 					if (self._useAppleScript) {
 						try { await self._as.setVolume(restore) } catch (e) { self.log('warn', `Unmute (AppleScript) failed: ${e.message}`) }
 					} else {
-						try { await self.spotify.setVolume(restore) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
+						try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(restore, deviceId)) } catch (e) { self.log('error', `Unmute failed: ${e.message}`) }
 					}
 					self.state.volume = restore
 				} else {
@@ -454,7 +466,7 @@ function getActions() {
 					if (self._useAppleScript) {
 						try { await self._as.setVolume(0) } catch (e) { self.log('warn', `Mute (AppleScript) failed: ${e.message}`) }
 					} else {
-						try { await self.spotify.setVolume(0) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
+						try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(0, deviceId)) } catch (e) { self.log('error', `Mute failed: ${e.message}`) }
 					}
 					self.state.volume = 0
 				}
@@ -483,7 +495,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(v) } catch (e) { self.log('warn', `Volume up (AppleScript) failed: ${e.message}`) }
 				} else {
-					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume up failed: ${e.message}`) }
+					try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(v, deviceId)) } catch (e) { self.log('error', `Volume up failed: ${e.message}`) }
 				}
 			},
 		},
@@ -510,7 +522,7 @@ function getActions() {
 				if (self._useAppleScript) {
 					try { await self._as.setVolume(v) } catch (e) { self.log('warn', `Volume down (AppleScript) failed: ${e.message}`) }
 				} else {
-					try { await self.spotify.setVolume(v) } catch (e) { self.log('error', `Volume down failed: ${e.message}`) }
+					try { await withDeviceRetry(self, (deviceId) => self.spotify.setVolume(v, deviceId)) } catch (e) { self.log('error', `Volume down failed: ${e.message}`) }
 				}
 			},
 		},
@@ -524,8 +536,10 @@ function getActions() {
 					return
 				}
 				try {
-					await self.spotify.setShuffle(true)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(true)
+					await withDeviceRetry(self, async (deviceId) => {
+						await self.spotify.setShuffle(true, deviceId)
+						if (self._smartShuffleWarned) await self.spotify.setShuffle(true, deviceId)
+					})
 				} catch (e) {
 					self.log('error', `Shuffle on failed: ${e.message}`)
 				}
@@ -541,8 +555,10 @@ function getActions() {
 					return
 				}
 				try {
-					await self.spotify.setShuffle(false)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(false)
+					await withDeviceRetry(self, async (deviceId) => {
+						await self.spotify.setShuffle(false, deviceId)
+						if (self._smartShuffleWarned) await self.spotify.setShuffle(false, deviceId)
+					})
 				} catch (e) {
 					self.log('error', `Shuffle off failed: ${e.message}`)
 				}
@@ -559,8 +575,10 @@ function getActions() {
 				}
 				const next = !self.state.isShuffling
 				try {
-					await self.spotify.setShuffle(next)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(next)
+					await withDeviceRetry(self, async (deviceId) => {
+						await self.spotify.setShuffle(next, deviceId)
+						if (self._smartShuffleWarned) await self.spotify.setShuffle(next, deviceId)
+					})
 				} catch (e) {
 					self.log('error', `Shuffle toggle failed: ${e.message}`)
 				}
@@ -570,19 +588,19 @@ function getActions() {
 		repeatOff: {
 			name: 'Repeat Off',
 			options: [],
-			callback: () => simpleAction(self, 'Repeat off', () => self._as.setRepeat('off'), () => self.spotify.setRepeat('off')),
+			callback: () => simpleAction(self, 'Repeat off', () => self._as.setRepeat('off'), () => withDeviceRetry(self, (deviceId) => self.spotify.setRepeat('off', deviceId))),
 		},
 
 		repeatTrack: {
 			name: 'Repeat Track',
 			options: [],
-			callback: () => simpleAction(self, 'Repeat track', () => self._as.setRepeat('track'), () => self.spotify.setRepeat('track')),
+			callback: () => simpleAction(self, 'Repeat track', () => self._as.setRepeat('track'), () => withDeviceRetry(self, (deviceId) => self.spotify.setRepeat('track', deviceId))),
 		},
 
 		repeatContext: {
 			name: 'Repeat Playlist/Album',
 			options: [],
-			callback: () => simpleAction(self, 'Repeat context', () => self._as.setRepeat('context'), () => self.spotify.setRepeat('context')),
+			callback: () => simpleAction(self, 'Repeat context', () => self._as.setRepeat('context'), () => withDeviceRetry(self, (deviceId) => self.spotify.setRepeat('context', deviceId))),
 		},
 
 		repeatToggleAll: {
@@ -597,7 +615,7 @@ function getActions() {
 				if (self.state.repeatMode === 'off') next = 'track'
 				else if (self.state.repeatMode === 'track') next = 'context'
 				try {
-					await self.spotify.setRepeat(next)
+					await withDeviceRetry(self, (deviceId) => self.spotify.setRepeat(next, deviceId))
 				} catch (e) {
 					self.log('error', `Repeat toggle failed: ${e.message}`)
 				}
@@ -614,7 +632,7 @@ function getActions() {
 				}
 				const next = self.state.repeatMode === 'off' ? 'context' : 'off'
 				try {
-					await self.spotify.setRepeat(next)
+					await withDeviceRetry(self, (deviceId) => self.spotify.setRepeat(next, deviceId))
 				} catch (e) {
 					self.log('error', `Repeat toggle failed: ${e.message}`)
 				}
@@ -631,7 +649,7 @@ function getActions() {
 				}
 				const next = self.state.repeatMode === 'off' ? 'track' : 'off'
 				try {
-					await self.spotify.setRepeat(next)
+					await withDeviceRetry(self, (deviceId) => self.spotify.setRepeat(next, deviceId))
 				} catch (e) {
 					self.log('error', `Repeat toggle failed: ${e.message}`)
 				}
@@ -869,7 +887,7 @@ function getActions() {
 					return
 				}
 				try {
-					await self.spotify.addToQueue(track)
+					await withDeviceRetry(self, (deviceId) => self.spotify.addToQueue(track, deviceId))
 					self.log('info', `Queued: ${track}`)
 				} catch (e) {
 					self.log('error', `Add to queue failed: ${e.message}`)
@@ -1155,4 +1173,4 @@ function getActions() {
 	}
 }
 
-module.exports = { getActions }
+module.exports = { getActions, withDeviceRetry }

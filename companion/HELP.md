@@ -20,16 +20,16 @@ The Refresh Token field fills in automatically. You should only need to do this 
 | Seek To Position | M:SS |
 | Skip Forward / Skip Back | By N seconds |
 | Move Playback Position | Signed offset, negative rewinds |
-| Set Volume / Volume Up / Volume Down | 0-100 |
-| Mute / Unmute / Mute Toggle | Remembers the pre-mute level |
+| Set Volume / Volume Up / Volume Down | 0-100, launches Spotify if no device is active |
+| Mute / Unmute / Mute Toggle | Remembers the pre-mute level, launches Spotify if no device is active |
 | Volume Fade | Fade to a target volume over a duration |
 | Play with Fade In | Sets volume to 0, plays, fades up |
-| Shuffle On / Off / Toggle | |
-| Repeat Off / Track / Playlist-Album | |
+| Shuffle On / Off / Toggle | Launches Spotify if no device is active |
+| Repeat Off / Track / Playlist-Album | Launches Spotify if no device is active |
 | Repeat Toggle | Three variants: full cycle, off/playlist, off/track |
 | Play Track By ID | Accepts URI, share URL, or bare ID, with optional start position |
 | Play Playlist / Album / Context | Optional start track, start position, shuffle |
-| Add Track to Queue | |
+| Add Track to Queue | Launches Spotify if no device is active |
 | Save / Remove / Toggle Like | Current track |
 | Save Bookmark | Stores track, position, and playlist/album context |
 | Resume Bookmark | Returns to the saved track and position |

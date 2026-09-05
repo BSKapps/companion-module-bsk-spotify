@@ -1,6 +1,6 @@
 {
 	"name": "companion-module-bsk-spotify",
-	"version": "1.0.10",
+	"version": "1.0.11",
 	"license": "MIT",
 	"main": "src/main.js",
 	"scripts": {

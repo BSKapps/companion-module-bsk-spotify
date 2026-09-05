@@ -296,6 +296,23 @@ class SpotifyInstance extends InstanceBase {
 		}
 	}
 
+	enterAppleScriptFallback(message) {
+		if (!this._apiHealthy) return this._useAppleScript
+		this._apiHealthy = false
+		this._statusOk = false
+		if (process.platform === 'darwin') {
+			this._useAppleScript = true
+			this._asPollCount = 0
+			this._probeSuccesses = 0
+			this.log('warn', 'Web API unreachable - switching to AppleScript fallback (macOS only)')
+			this.updateStatus(InstanceStatus.Warning, 'Offline - using AppleScript fallback (macOS only)')
+		} else {
+			this.updateStatus(InstanceStatus.ConnectionFailure, `API error: ${message}`)
+		}
+		this.checkFeedbacks('apiHealthy')
+		return this._useAppleScript
+	}
+
 	probeApiRecovery() {
 		if (this._probeInFlight) return
 		this._probeInFlight = true
@@ -457,7 +474,7 @@ class SpotifyInstance extends InstanceBase {
 
 			this._consecutivePollErrors = 0
 			this._lastApiSuccessAt = Date.now()
-			if (!this._apiHealthy || !this._statusOk) {
+			if (!this._useAppleScript && (!this._apiHealthy || !this._statusOk)) {
 				this._apiHealthy = true
 				this._statusOk = true
 				this.updateStatus(InstanceStatus.Ok)
@@ -468,18 +485,7 @@ class SpotifyInstance extends InstanceBase {
 			this.log('warn', `Poll error: ${e.message}`)
 			let offlineTooLong = this._lastApiSuccessAt > 0 && Date.now() - this._lastApiSuccessAt > 15000
 			if ((this._consecutivePollErrors >= 3 || offlineTooLong) && this._apiHealthy) {
-				this._apiHealthy = false
-				this._statusOk = false
-				if (process.platform === 'darwin') {
-					this._useAppleScript = true
-					this._asPollCount = 0
-					this._probeSuccesses = 0
-					this.log('warn', 'Web API unreachable - switching to AppleScript fallback (macOS only)')
-					this.updateStatus(InstanceStatus.Warning, 'Offline - using AppleScript fallback (macOS only)')
-				} else {
-					this.updateStatus(InstanceStatus.ConnectionFailure, `API error: ${e.message}`)
-				}
-				this.checkFeedbacks('apiHealthy')
+				this.enterAppleScriptFallback(e.message)
 			}
 			if (this._useAppleScript) {
 				try { await this.appleScriptPoll() } catch (asErr) {

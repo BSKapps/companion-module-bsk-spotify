@@ -227,6 +227,7 @@ class SpotifyClient {
 			let parsed = new URL(url)
 			let options = {
 				hostname: parsed.hostname,
+				port: parsed.port || undefined,
 				path: parsed.pathname + parsed.search,
 				method,
 				headers: Object.assign({}, headers),
@@ -269,9 +270,14 @@ class SpotifyClient {
 					}
 				})
 			})
-			req.on('error', reject)
+			req.on('error', (e) => {
+				e.isNetwork = true
+				reject(e)
+			})
 			req.on('timeout', () => {
-				req.destroy(new Error('Request timeout'))
+				let err = new Error('Request timeout')
+				err.isNetwork = true
+				req.destroy(err)
 			})
 			if (body) req.write(body)
 			req.end()

@@ -24,7 +24,7 @@ The Refresh Token field fills in automatically. You should only need to do this 
 | Mute / Unmute / Mute Toggle | Remembers the pre-mute level, launches Spotify if no device is active |
 | Volume Fade | Fade to a target volume over a duration |
 | Play with Fade In | Sets volume to 0, plays, fades up |
-| Shuffle On / Off / Toggle | Launches Spotify if no device is active |
+| Shuffle On / Off / Toggle | Launches Spotify if no device is active. On a Mac, Shuffle Off also clears Smart Shuffle through the Spotify app, which Spotify's own API cannot do |
 | Repeat Off / Track / Playlist-Album | Launches Spotify if no device is active |
 | Repeat Toggle | Three variants: full cycle, off/playlist, off/track |
 | Play Track By ID | Accepts URI, share URL, or bare ID, with optional start position |

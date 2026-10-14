@@ -1,5 +1,5 @@
 const net = require('net')
-const { simpleAction } = require('../src/actions')
+const { simpleAction, shuffleOff } = require('../src/actions')
 const SpotifyClient = require('../src/spotify')
 
 function makeSelf(opts = {}) {
@@ -109,3 +109,27 @@ test('_request tags a timeout as a network error', async () => {
 	expect(caught.message).toBe('Request timeout')
 	expect(caught.isNetwork).toBe(true)
 })
+
+function makeShuffleSelf(smartShuffle) {
+	let self = makeSelf()
+	self.state = { smartShuffle }
+	self._as = { setShuffle: jest.fn(async () => {}) }
+	self.spotify = { setShuffle: jest.fn(async () => {}) }
+	return self
+}
+
+test('shuffle off goes through the Spotify app while Smart Shuffle is on', async () => {
+	let self = makeShuffleSelf(true)
+	await shuffleOff(self, 'Shuffle off')
+	expect(self._as.setShuffle).toHaveBeenCalledWith(false)
+	expect(self.spotify.setShuffle).not.toHaveBeenCalled()
+	expect(self.log).toHaveBeenCalledWith('info', 'Shuffle off: Smart Shuffle is on, turning shuffle off through the Spotify app')
+})
+
+test('shuffle off uses the Web API when Smart Shuffle is off', async () => {
+	let self = makeShuffleSelf(false)
+	await shuffleOff(self, 'Shuffle off')
+	expect(self.spotify.setShuffle).toHaveBeenCalledWith(false, undefined)
+	expect(self._as.setShuffle).not.toHaveBeenCalled()
+})
+

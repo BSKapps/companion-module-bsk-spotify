@@ -35,6 +35,7 @@ class SpotifyInstance extends InstanceBase {
 			durationMs: 0,
 			volume: 0,
 			isShuffling: false,
+			smartShuffle: false,
 			isRepeating: false,
 			repeatMode: 'off',
 			deviceName: '',
@@ -418,6 +419,7 @@ class SpotifyInstance extends InstanceBase {
 					}
 				}
 				this.state.isShuffling = data.shuffle_state || false
+				this.state.smartShuffle = data.smart_shuffle === true
 				this.state.repeatMode = data.repeat_state || 'off'
 				this.state.isRepeating = this.state.repeatMode !== 'off'
 				if (data.smart_shuffle && !this._smartShuffleWarned) {

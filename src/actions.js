@@ -69,6 +69,17 @@ async function withDeviceRetry(self, apiFn) {
 	}
 }
 
+async function shuffleOff(self, label) {
+	if (self.state.smartShuffle && process.platform === 'darwin') {
+		self.log('info', `${label}: Smart Shuffle is on, turning shuffle off through the Spotify app`)
+		try { await self._as.setShuffle(false) } catch (e) { self.log('error', `${label} failed: ${e.message}`) }
+		return
+	}
+	await simpleAction(self, label, () => self._as.setShuffle(false), () => withDeviceRetry(self, async (deviceId) => {
+		await self.spotify.setShuffle(false, deviceId)
+		if (self._smartShuffleWarned) await self.spotify.setShuffle(false, deviceId)
+	}))
+}
 function getActions() {
 	let self = this
 
@@ -461,12 +472,7 @@ function getActions() {
 		shuffleOff: {
 			name: 'Shuffle Off',
 			options: [],
-			callback: async () => {
-				await simpleAction(self, 'Shuffle off', () => self._as.setShuffle(false), () => withDeviceRetry(self, async (deviceId) => {
-					await self.spotify.setShuffle(false, deviceId)
-					if (self._smartShuffleWarned) await self.spotify.setShuffle(false, deviceId)
-				}))
-			},
+			callback: () => shuffleOff(self, 'Shuffle off'),
 		},
 
 		shuffleToggle: {
@@ -474,6 +480,7 @@ function getActions() {
 			options: [],
 			callback: async () => {
 				const next = !self.state.isShuffling
+				if (!next) return shuffleOff(self, 'Shuffle toggle')
 				await simpleAction(self, 'Shuffle toggle', () => self._as.setShuffle(next), () => withDeviceRetry(self, async (deviceId) => {
 					await self.spotify.setShuffle(next, deviceId)
 					if (self._smartShuffleWarned) await self.spotify.setShuffle(next, deviceId)
@@ -1045,4 +1052,4 @@ function getActions() {
 	}
 }
 
-module.exports = { getActions, withDeviceRetry, simpleAction }
+module.exports = { getActions, withDeviceRetry, simpleAction, shuffleOff }

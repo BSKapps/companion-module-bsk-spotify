@@ -224,6 +224,7 @@ class SpotifyClient {
 
 	_request(method, url, body, headers, timeoutMs) {
 		return new Promise((resolve, reject) => {
+			let startedAt = Date.now()
 			let parsed = new URL(url)
 			let options = {
 				hostname: parsed.hostname,
@@ -264,7 +265,11 @@ class SpotifyClient {
 						return
 					}
 					try {
-						resolve(JSON.parse(raw))
+						let data = JSON.parse(raw)
+						if (data && typeof data === 'object') {
+							Object.defineProperty(data, 'requestStartedAt', { value: startedAt })
+						}
+						resolve(data)
 					} catch (e) {
 						resolve(null)
 					}

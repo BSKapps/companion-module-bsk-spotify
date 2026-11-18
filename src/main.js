@@ -61,6 +61,7 @@ class SpotifyInstance extends InstanceBase {
 		this._smartShuffleWarned = false
 		this._tickTimer = null
 		this._lastPollAt = 0
+		this._lastPollReceivedAt = 0
 		this._lastPolledPositionMs = 0
 		this._useAppleScript = false
 		this._asPollCount = 0
@@ -290,6 +291,7 @@ class SpotifyInstance extends InstanceBase {
 				this._lastPolledPositionMs = s.positionMs
 			}
 			this._lastPollAt = Date.now()
+			this._lastPollReceivedAt = this._lastPollAt
 			updateVariables.call(this)
 			this.checkFeedbacks()
 		} catch (e) {
@@ -343,7 +345,7 @@ class SpotifyInstance extends InstanceBase {
 		if (this.state.playerState !== 'Playing') return
 		if (!this.state.durationMs) return
 		let elapsed = Date.now() - this._lastPollAt
-		if (elapsed <= 0 || elapsed > POLL_INTERVAL_MS * 2) return
+		if (elapsed <= 0 || Date.now() - this._lastPollReceivedAt > POLL_INTERVAL_MS * 2) return
 		let estimated = this._lastPolledPositionMs + elapsed
 		if (estimated >= this.state.durationMs) estimated = this.state.durationMs
 		this.state.positionMs = estimated
@@ -429,8 +431,14 @@ class SpotifyInstance extends InstanceBase {
 					this._smartShuffleWarned = false
 				}
 			}
-			this._lastPollAt = Date.now()
+			let receivedAt = Date.now()
+			let sentAt = (data && data.requestStartedAt) || receivedAt
+			this._lastPollAt = Math.round((sentAt + receivedAt) / 2)
+			this._lastPollReceivedAt = receivedAt
 			this._lastPolledPositionMs = this.state.positionMs
+			if (this.state.playerState === 'Playing' && this.state.durationMs) {
+				this.state.positionMs = Math.min(this.state.positionMs + receivedAt - this._lastPollAt, this.state.durationMs)
+			}
 			updateVariables.call(this)
 			this.checkFeedbacks()
 
